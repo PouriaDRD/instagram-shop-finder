@@ -1,65 +1,55 @@
 import re
-import unicodedata
+from dataclasses import dataclass
 
-from pydantic import BaseModel, ConfigDict, Field
-
-from app.models.profile import (
-    InstagramProfile,
-    ProfileCategory,
-)
+from app.models.profile import InstagramProfile, ProfileCategory
 
 
-class CategoryClassificationResult(BaseModel):
-    """Immutable data model representing the output of profile category classification.
-
-    Attributes:
-        category: Predicted profile category enum value (e.g., BEAUTY, CLOTHING, UNKNOWN).
-        score: Calculated category confidence score bounded between 0.0 and 1.0.
-        matched_signals: Unique list of canonical keyword signals matched for the predicted category.
-    """
-
-    model_config = ConfigDict(
-        extra="forbid",
-        frozen=True,
-    )
-
+@dataclass(frozen=True, slots=True)
+class CategoryClassification:
     category: ProfileCategory
-
-    score: float = Field(
-        ge=0.0,
-        le=1.0,
-    )
-
-    matched_signals: tuple[str, ...] = ()
+    score: float
+    matched_signals: tuple[str, ...]
 
 
 class CategoryClassifier:
-    """Heuristic rule-based classifier for categorizing Instagram profiles into vertical domains.
+    """
+    Rule-based profile category classifier.
 
-    Scans profile metadata (display name, bio text) for category-specific keyword signals,
-    handling Persian character normalization, half-spaces, and attached compound term prefixes.
+    Important:
+    Different aliases of the same concept count as ONE signal.
+
+    Example:
+        "میکاپ" + "makeup"
+
+    represents one canonical concept and therefore contributes 0.25,
+    not 0.50.
     """
 
-    # Dictionary mapping profile categories to canonical keywords and their variant aliases
-    _CATEGORY_SIGNALS: dict[
+    _CATEGORY_SIGNAL_GROUPS: dict[
         ProfileCategory,
         dict[str, tuple[str, ...]],
     ] = {
         ProfileCategory.BEAUTY: {
-            "آرایشی": ("آرایشی",),
             "میکاپ": (
                 "میکاپ",
                 "makeup",
             ),
-            "پوست": ("پوست",),
-            "اسکین": (
-                "اسکین",
+            "آرایشی": (
+                "آرایشی",
+                "ارایشی",
+                "cosmetic",
+                "cosmetics",
+            ),
+            "پوست": (
+                "پوست",
                 "skincare",
+                "skin care",
+            ),
+            "مو": (
+                "مو",
+                "hair",
             ),
             "beauty": ("beauty",),
-            "رژ": ("رژ",),
-            "کرم": ("کرم",),
-            "ریمل": ("ریمل",),
         },
         ProfileCategory.FASHION: {
             "فشن": (
@@ -70,44 +60,53 @@ class CategoryClassifier:
                 "استایل",
                 "style",
             ),
-            "مد": ("مد",),
         },
         ProfileCategory.CLOTHING: {
-            "پوشاک": ("پوشاک",),
             "لباس": (
                 "لباس",
-                "لباس ها",
-                "لباس‌های",
+                "پوشاک",
+                "clothing",
+                "apparel",
             ),
-            "لباس زیر": ("لباس زیر",),
-            "لباس خواب": ("لباس خواب",),
-            "شورت": ("شورت",),
-            "جوراب": ("جوراب",),
+            "لباس زیر": (
+                "لباس زیر",
+                "underwear",
+                "lingerie",
+            ),
+            "لباس خواب": (
+                "لباس خواب",
+                "sleepwear",
+            ),
             "مانتو": ("مانتو",),
-            "شومیز": ("شومیز",),
-            "شلوار": ("شلوار",),
-            "تیشرت": ("تیشرت",),
-            "هودی": ("هودی",),
-            "dress": ("dress",),
-            "clothing": ("clothing",),
-            "underwear": ("underwear",),
-            "lingerie": ("lingerie",),
+            "شورت": ("شورت",),
+            "جوراب": (
+                "جوراب",
+                "sock",
+                "socks",
+            ),
         },
         ProfileCategory.HOME: {
-            "لوازم خانگی": ("لوازم خانگی",),
-            "خانه": ("خانه",),
-            "هوم": (
-                "هوم",
+            "لوازم خانگی": (
+                "لوازم خانگی",
+                "لوازم خانه",
+                "home appliance",
+                "home appliances",
+            ),
+            "خانه": (
+                "خانه",
                 "home",
+            ),
+            "آشپزخانه": (
+                "آشپزخانه",
+                "اشپزخانه",
+                "kitchen",
             ),
             "دکور": (
                 "دکور",
+                "دکوراسیون",
                 "decor",
+                "home decor",
             ),
-            "دکوراسیون": ("دکوراسیون",),
-            "آشپزخانه": ("آشپزخانه",),
-            "ظروف": ("ظروف",),
-            "جهیزیه": ("جهیزیه",),
         },
         ProfileCategory.ACCESSORIES: {
             "اکسسوری": (
@@ -115,157 +114,165 @@ class CategoryClassifier:
                 "accessory",
                 "accessories",
             ),
+            "گردنبند": (
+                "گردنبند",
+                "necklace",
+            ),
+            "دستبند": (
+                "دستبند",
+                "bracelet",
+            ),
             "زیورآلات": (
                 "زیورآلات",
+                "زیورآلات",
                 "jewelry",
+                "jewellery",
             ),
-            "گردنبند": ("گردنبند",),
-            "دستبند": ("دستبند",),
-            "انگشتر": ("انگشتر",),
-            "کیف": ("کیف",),
-            "ساعت": ("ساعت",),
+            "بدلیجات": ("بدلیجات",),
+            "کیف": (
+                "کیف",
+                "bag",
+            ),
+            "کفش": (
+                "کفش",
+                "shoe",
+                "shoes",
+            ),
+            "عینک": (
+                "عینک",
+                "glasses",
+                "sunglasses",
+            ),
+        },
+        ProfileCategory.TOYS: {
+            "اسباب بازی": (
+                "اسباب بازی",
+                "اسباب‌بازی",
+                "اسباببازی",
+                "اسباب بازي",
+                "اسباب‌بازي",
+                "اسباببازي",
+                "toy",
+                "toys",
+                "toy store",
+            ),
+            "عروسک": (
+                "عروسک",
+                "doll",
+                "dolls",
+            ),
+            "لگو": (
+                "لگو",
+                "lego",
+            ),
+            "بازی فکری": (
+                "بازی فکری",
+                "بازي فکري",
+                "board game",
+                "board games",
+            ),
         },
     }
 
-    # Signals allowed to match as prefixes without right-side word boundaries
-    # (e.g., matching "شورت" in compound brand/specialty terms like "شورتولوژیست")
-    _PREFIX_MATCH_SIGNALS: frozenset[str] = frozenset(
+    _PREFIX_ALIASES: frozenset[str] = frozenset(
         {
             "شورت",
         }
     )
 
-    # Base weight multiplier added per matched signal toward final category confidence score
-    _SIGNAL_WEIGHT = 0.25
+    _CATEGORY_PRIORITY: dict[
+        ProfileCategory,
+        int,
+    ] = {
+        ProfileCategory.TOYS: 60,
+        ProfileCategory.CLOTHING: 50,
+        ProfileCategory.BEAUTY: 40,
+        ProfileCategory.HOME: 30,
+        ProfileCategory.ACCESSORIES: 20,
+        ProfileCategory.FASHION: 10,
+        ProfileCategory.UNKNOWN: 0,
+    }
 
     def classify(
         self,
         profile: InstagramProfile,
-    ) -> CategoryClassificationResult:
-        """Evaluates an Instagram profile and classifies it into its primary domain category.
+    ) -> CategoryClassification:
+        text = self._normalize_text(
+            " ".join(
+                part
+                for part in (
+                    profile.display_name,
+                    profile.bio,
+                )
+                if part
+            )
+        )
 
-        Args:
-            profile: Target InstagramProfile instance containing display name and bio text.
-
-        Returns:
-            A CategoryClassificationResult with the top category, confidence score, and matches.
-        """
-        text = self._build_searchable_text(profile)
-
-        category_matches: dict[
+        matches_by_category: dict[
             ProfileCategory,
-            tuple[str, ...],
+            list[str],
         ] = {}
 
-        # Scan searchable text against all defined categories
-        for category, signals in self._CATEGORY_SIGNALS.items():
-            matches = self._find_category_matches(
-                text=text,
-                signals=signals,
-            )
+        for (
+            category,
+            signal_groups,
+        ) in self._CATEGORY_SIGNAL_GROUPS.items():
+            matched: list[str] = []
 
-            category_matches[category] = matches
+            for canonical_signal, aliases in signal_groups.items():
+                if any(
+                    self._contains_signal(
+                        text=text,
+                        signal=self._normalize_text(alias),
+                    )
+                    for alias in aliases
+                ):
+                    matched.append(canonical_signal)
 
-        best_category = ProfileCategory.UNKNOWN
+            if matched:
+                matches_by_category[category] = matched
 
-        best_matches: tuple[str, ...] = ()
-
-        # Select category with the highest count of matched signal keywords
-        for category, matches in category_matches.items():
-            if len(matches) > len(best_matches):
-                best_category = category
-                best_matches = matches
-
-        # Return UNKNOWN if no category signals were identified
-        if not best_matches:
-            return CategoryClassificationResult(
-                category=(ProfileCategory.UNKNOWN),
+        if not matches_by_category:
+            return CategoryClassification(
+                category=ProfileCategory.UNKNOWN,
                 score=0.0,
                 matched_signals=(),
             )
 
-        # Calculate capped confidence score based on total signal count
-        score = min(
-            round(
-                len(best_matches) * self._SIGNAL_WEIGHT,
-                2,
+        best_category = max(
+            matches_by_category,
+            key=lambda category: (
+                len(matches_by_category[category]),
+                self._CATEGORY_PRIORITY.get(
+                    category,
+                    0,
+                ),
             ),
-            1.0,
         )
 
-        return CategoryClassificationResult(
+        matched_signals = matches_by_category[best_category]
+
+        score = min(
+            1.0,
+            len(matched_signals) * 0.25,
+        )
+
+        return CategoryClassification(
             category=best_category,
             score=score,
-            matched_signals=best_matches,
+            matched_signals=tuple(matched_signals),
         )
 
-    @classmethod
-    def _build_searchable_text(
-        cls,
-        profile: InstagramProfile,
-    ) -> str:
-        """Combines profile display name and bio into a single normalized searchable string."""
-        parts = (
-            profile.display_name or "",
-            profile.bio or "",
-        )
-
-        return cls._normalize_text(" ".join(parts))
-
-    def _find_category_matches(
+    def _contains_signal(
         self,
         *,
         text: str,
-        signals: dict[
-            str,
-            tuple[str, ...],
-        ],
-    ) -> tuple[str, ...]:
-        """Scans text for matches against a specific category's signal definitions.
-
-        Args:
-            text: Normalized target text to search.
-            signals: Dictionary of canonical keyword signals and their alias tuples.
-
-        Returns:
-            Tuple of matched canonical signal strings for the category.
-        """
-        matches: list[str] = []
-
-        for canonical, aliases in signals.items():
-            allow_prefix = canonical in self._PREFIX_MATCH_SIGNALS
-
-            if any(
-                self._signal_exists(
-                    text=text,
-                    signal=alias,
-                    allow_attached_suffix=allow_prefix,
-                )
-                for alias in aliases
-            ):
-                matches.append(canonical)
-
-        return tuple(matches)
-
-    @classmethod
-    def _signal_exists(
-        cls,
-        *,
-        text: str,
         signal: str,
-        allow_attached_suffix: bool,
     ) -> bool:
-        """Performs regex matching for a specific signal alias against text."""
-        normalized_signal = cls._normalize_text(signal)
-
-        escaped = re.escape(normalized_signal)
-
-        if allow_attached_suffix:
-            # Enforce left boundary only to support compound term matching
-            pattern = rf"(?<!\w)" rf"{escaped}"
+        if signal in self._PREFIX_ALIASES:
+            pattern = rf"(?<![\w])" rf"{re.escape(signal)}"
         else:
-            # Enforce full word boundaries on both sides
-            pattern = rf"(?<!\w)" rf"{escaped}" rf"(?!\w)"
+            pattern = rf"(?<![\w])" rf"{re.escape(signal)}" rf"(?![\w])"
 
         return (
             re.search(
@@ -280,33 +287,25 @@ class CategoryClassifier:
     def _normalize_text(
         value: str,
     ) -> str:
-        """Standardizes text by lowercasing, replacing Persian variants, stripping diacritics and control marks."""
-        value = (
-            value.lower()
-            .replace("ي", "ی")
-            .replace("ى", "ی")
-            .replace("ك", "ک")
-            .replace("\u200c", " ")  # Replace half-space with standard space
-            .replace("\u200f", "")  # Strip RTL mark
-            .replace("\u200e", "")  # Strip LTR mark
-        )
-
-        # Strip combining marks (Mn) and formatting control characters (Cf)
-        value = "".join(
-            character
-            for character in value
-            if unicodedata.category(character)
-            not in {
-                "Mn",
-                "Cf",
+        translation_table = str.maketrans(
+            {
+                "ي": "ی",
+                "ى": "ی",
+                "ك": "ک",
+                "ۀ": "ه",
+                "ة": "ه",
+                "\u200c": " ",
+                "\u200f": "",
+                "\u200e": "",
             }
         )
 
-        # Collapse whitespace sequences into single spaces
-        value = re.sub(
+        normalized = value.translate(translation_table).lower()
+
+        normalized = re.sub(
             r"\s+",
             " ",
-            value,
+            normalized,
         )
 
-        return value.strip()
+        return normalized.strip()

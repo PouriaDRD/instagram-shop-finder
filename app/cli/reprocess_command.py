@@ -1,6 +1,8 @@
 from app.classifiers.category_classifier import CategoryClassifier
+from app.classifiers.link_classifier import LinkClassifier
 from app.classifiers.shop_classifier import ShopClassifier, ShopVerdict
 from app.config import PROFILES_FILE
+from app.models.external_link import ExternalLink
 from app.models.profile import InstagramProfile
 from app.storage.json_storage import JsonProfileStorage
 
@@ -10,8 +12,31 @@ def apply_classifications(
     *,
     shop_classifier: ShopClassifier,
     category_classifier: CategoryClassifier,
+    link_classifier: LinkClassifier | None = None,
 ) -> InstagramProfile:
     updated_profile = profile.model_copy(deep=True)
+
+    effective_link_classifier = (
+        link_classifier if link_classifier is not None else LinkClassifier()
+    )
+
+    updated_links: list[ExternalLink] = []
+
+    for link in updated_profile.external_links:
+        detected_type = effective_link_classifier.classify(
+            url=str(link.url),
+            title=link.title,
+        )
+
+        updated_links.append(
+            ExternalLink(
+                url=link.url,
+                title=link.title,
+                type=detected_type,
+            )
+        )
+
+    updated_profile.external_links = tuple(updated_links)
 
     shop_classification = shop_classifier.classify(updated_profile)
 
@@ -47,6 +72,7 @@ def run_reprocess_command() -> None:
 
     shop_classifier = ShopClassifier()
     category_classifier = CategoryClassifier()
+    link_classifier = LinkClassifier()
 
     processed_count = 0
 
@@ -59,6 +85,7 @@ def run_reprocess_command() -> None:
             profile,
             shop_classifier=shop_classifier,
             category_classifier=(category_classifier),
+            link_classifier=(link_classifier),
         )
 
         storage.save(updated_profile)
@@ -71,6 +98,12 @@ def run_reprocess_command() -> None:
             else "-"
         )
 
+        link_types = (
+            ", ".join(link.type.value for link in updated_profile.external_links)
+            if updated_profile.external_links
+            else "-"
+        )
+
         print(
             f"@{updated_profile.username}"
             f" | category="
@@ -79,10 +112,11 @@ def run_reprocess_command() -> None:
             f"{updated_profile.is_shop}"
             f" | shop_score="
             f"{shop_score}"
+            f" | links="
+            f"{link_types}"
         )
 
     print()
     print("Reprocess completed")
     print("-------------------")
-
     print(f"Processed profiles: " f"{processed_count}")

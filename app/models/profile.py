@@ -9,7 +9,10 @@ from pydantic import (
     model_validator,
 )
 
-from app.models.external_link import ExternalLink
+from app.models.external_link import (
+    ExternalLink,
+    ExternalLinkType,
+)
 
 
 class ProfileCategory(StrEnum):
@@ -18,6 +21,7 @@ class ProfileCategory(StrEnum):
     CLOTHING = "clothing"
     HOME = "home"
     ACCESSORIES = "accessories"
+    TOYS = "toys"
     UNKNOWN = "unknown"
 
 
@@ -69,38 +73,49 @@ class InstagramProfile(BaseModel):
 
     shop_signals: tuple[str, ...] = ()
 
-    discovered_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+    discovered_at: datetime = Field(
+        default_factory=lambda: (datetime.now(timezone.utc))
+    )
 
     @model_validator(mode="before")
     @classmethod
-    def migrate_legacy_data(cls, data: Any) -> Any:
-        if not isinstance(data, dict):
+    def migrate_legacy_data(
+        cls,
+        data: Any,
+    ) -> Any:
+        if not isinstance(
+            data,
+            dict,
+        ):
             return data
 
-        migrated_data = dict(data)
+        migrated = dict(data)
 
-        username = migrated_data.get("username")
+        username = migrated.get("username")
 
-        if not migrated_data.get("profile_url") and isinstance(username, str):
-            normalized_username = username.strip().lstrip("@").lower()
+        if not migrated.get("profile_url") and username:
+            migrated["profile_url"] = "https://www.instagram.com/" f"{username}/"
 
-            if normalized_username:
-                migrated_data["profile_url"] = (
-                    "https://www.instagram.com/" f"{normalized_username}/"
-                )
+        external_links = migrated.get("external_links")
 
-        legacy_external_url = migrated_data.pop(
+        legacy_external_url = migrated.pop(
             "external_url",
             None,
         )
 
-        if legacy_external_url and not migrated_data.get("external_links"):
-            migrated_data["external_links"] = [
+        if not external_links and legacy_external_url:
+            migrated["external_links"] = [
                 {
-                    "url": legacy_external_url,
+                    "url": (legacy_external_url),
                     "title": None,
-                    "type": "other",
+                    "type": (ExternalLinkType.WEBSITE),
                 }
             ]
 
-        return migrated_data
+        if migrated.get("external_links") is None:
+            migrated["external_links"] = []
+
+        if migrated.get("shop_signals") is None:
+            migrated["shop_signals"] = []
+
+        return migrated
