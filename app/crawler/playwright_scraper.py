@@ -42,6 +42,7 @@ class InstagramPlaywrightProfileFetcher(ProfileFetcher):
     - public profile metadata extraction
     - expanded external links
     - Instagram profile links
+    - public candidate username discovery
     - sign-up dialog dismissal
     - DOM-aware highlight exclusion from profile bio
     - visible-header-first profile metric extraction
@@ -78,6 +79,37 @@ class InstagramPlaywrightProfileFetcher(ProfileFetcher):
         flags=re.IGNORECASE,
     )
 
+    _INSTAGRAM_USERNAME_PATTERN: Final[re.Pattern[str]] = re.compile(
+        r"^[a-zA-Z0-9._]+$"
+    )
+
+    _AT_MENTION_PATTERN: Final[re.Pattern[str]] = re.compile(
+        r"(?<![\w.])@(?P<username>[a-zA-Z0-9._]{1,30})"
+    )
+
+    _BLOCKED_INSTAGRAM_FIRST_SEGMENTS: Final[frozenset[str]] = frozenset(
+        {
+            "about",
+            "accounts",
+            "api",
+            "challenge",
+            "developer",
+            "developers",
+            "direct",
+            "directory",
+            "emails",
+            "explore",
+            "legal",
+            "oauth",
+            "p",
+            "privacy",
+            "reel",
+            "reels",
+            "stories",
+            "web",
+        }
+    )
+
     _IGNORED_HEADER_LINES: Final[frozenset[str]] = frozenset(
         {
             "follow",
@@ -112,7 +144,6 @@ class InstagramPlaywrightProfileFetcher(ProfileFetcher):
 
         try:
             browser = self._launch_browser(playwright)
-
             context = self._create_context(browser)
 
         except Exception:
@@ -186,24 +217,155 @@ class InstagramPlaywrightProfileFetcher(ProfileFetcher):
                 f"{exc}"
             ) from exc
 
-    def _fetch_with_context(
+    def discover_candidate_usernames(
+        self,
+        username: str,
+    ) -> tuple[str, ...]:
+        """
+        Discover public candidate Instagram usernames visible
+        around a profile.
+
+        Sources currently include:
+        - Instagram profile anchors visible in the page
+        - @mentions visible in header/body text
+        - suggested/related profile anchors if Instagram renders them
+
+        The method does not log in or attempt to bypass restricted
+        Instagram surfaces.
+        """
+
+        normalized_username = self._normalize_username(username)
+
+        url = f"{self._BASE_URL}/" f"{normalized_username}/"
+
+        if self._context is not None:
+            return self._discover_candidates_with_context(
+                context=self._context,
+                username=normalized_username,
+                url=url,
+            )
+
+        try:
+            with sync_playwright() as playwright:
+                browser = self._launch_browser(playwright)
+
+                try:
+                    context = self._create_context(browser)
+
+                    try:
+                        return self._discover_candidates_with_context(
+                            context=context,
+                            username=normalized_username,
+                            url=url,
+                        )
+
+                    finally:
+                        context.close()
+
+                finally:
+                    browser.close()
+
+        except ProfileFetchError:
+            raise
+
+        except Exception as exc:
+            raise ProfileFetchError(
+                "Unexpected browser error while "
+                "discovering candidates around "
+                f"'@{normalized_username}': {exc}"
+            ) from exc
+
+    def _discover_candidates_with_context(
         self,
         *,
         context: BrowserContext,
         username: str,
         url: str,
-    ) -> RawProfileData:
+    ) -> tuple[str, ...]:
         page = context.new_page()
 
         try:
-            return self._fetch_page(
+            response = self._navigate(
                 page=page,
-                username=username,
                 url=url,
+                username=username,
+            )
+
+            if response is not None:
+                self._raise_for_response(
+                    response=response,
+                    username=username,
+                )
+
+            self._wait_for_profile_render(page)
+
+            body_text = self._read_body_text(page)
+
+            self._detect_blocked_page(body_text)
+
+            header_text = self._read_profile_header_text(page)
+
+            return self._extract_candidate_usernames_from_page(
+                page=page,
+                current_username=username,
+                header_text=header_text,
+                body_text=body_text,
             )
 
         finally:
             page.close()
+
+    def _extract_candidate_usernames_from_page(
+        self,
+        *,
+        page: Page,
+        current_username: str,
+        header_text: str,
+        body_text: str,
+    ) -> tuple[str, ...]:
+        candidates: list[str] = []
+        seen: set[str] = set()
+
+        normalized_current = current_username.strip().lstrip("@").lower()
+
+        def add_candidate(
+            raw_username: str,
+        ) -> None:
+            normalized = raw_username.strip().lstrip("@").lower()
+
+            if not self._is_valid_instagram_username(normalized):
+                return
+
+            if normalized == normalized_current:
+                return
+
+            if normalized in seen:
+                return
+
+            seen.add(normalized)
+
+            candidates.append(normalized)
+
+        body = page.locator("body")
+
+        if body.count() > 0:
+            raw_links = self._collect_anchor_candidates(
+                container=body,
+                visible_only=True,
+            )
+
+            for raw_url, _ in raw_links:
+                linked_username = self._instagram_username_from_url(raw_url)
+
+                if linked_username is not None:
+                    add_candidate(linked_username)
+
+        combined_text = f"{header_text}\n" f"{body_text}"
+
+        for match in self._AT_MENTION_PATTERN.finditer(combined_text):
+            add_candidate(match.group("username"))
+
+        return tuple(candidates)
 
     @staticmethod
     def _launch_browser(
@@ -224,6 +386,25 @@ class InstagramPlaywrightProfileFetcher(ProfileFetcher):
                 "height": 1000,
             },
         )
+
+    def _fetch_with_context(
+        self,
+        *,
+        context: BrowserContext,
+        username: str,
+        url: str,
+    ) -> RawProfileData:
+        page = context.new_page()
+
+        try:
+            return self._fetch_page(
+                page=page,
+                username=username,
+                url=url,
+            )
+
+        finally:
+            page.close()
 
     def _fetch_page(
         self,
@@ -352,7 +533,7 @@ class InstagramPlaywrightProfileFetcher(ProfileFetcher):
 
         if status == 404:
             raise ProfileNotFoundError(
-                f"Instagram profile " f"'@{username}' was not found."
+                "Instagram profile " f"'@{username}' was not found."
             )
 
         if status == 429:
@@ -829,18 +1010,6 @@ class InstagramPlaywrightProfileFetcher(ProfileFetcher):
         description: str | None,
         body_text: str,
     ) -> int:
-        """
-        Extract a profile metric using the freshest visible source first.
-
-        Priority:
-        1. visible profile header
-        2. OpenGraph description
-        3. body text
-
-        Each metric is resolved independently. For example, if followers
-        are present in the header but posts are not, posts may still fall
-        back to OpenGraph metadata.
-        """
         sources = (
             header_text,
             description or "",
@@ -915,7 +1084,12 @@ class InstagramPlaywrightProfileFetcher(ProfileFetcher):
         header_text: str,
         username: str,
     ) -> tuple[ExternalLink, ...]:
-        candidates: list[tuple[str, str | None]] = []
+        candidates: list[
+            tuple[
+                str,
+                str | None,
+            ]
+        ] = []
 
         header = page.locator("header").first
 
@@ -948,7 +1122,10 @@ class InstagramPlaywrightProfileFetcher(ProfileFetcher):
 
         seen: set[str] = set()
 
-        for raw_url, raw_title in candidates:
+        for (
+            raw_url,
+            raw_title,
+        ) in candidates:
             normalized_url = self._unwrap_instagram_redirect(raw_url).strip()
 
             if not normalized_url or not self._is_external_url(normalized_url):
@@ -1001,7 +1178,12 @@ class InstagramPlaywrightProfileFetcher(ProfileFetcher):
         *,
         page: Page,
         header: Locator,
-    ) -> list[tuple[str, str | None]]:
+    ) -> list[
+        tuple[
+            str,
+            str | None,
+        ]
+    ]:
         if header.count() == 0:
             return []
 
@@ -1024,9 +1206,7 @@ class InstagramPlaywrightProfileFetcher(ProfileFetcher):
             pass
 
         try:
-            trigger.click(
-                timeout=5_000,
-            )
+            trigger.click(timeout=5_000)
 
         except PlaywrightTimeoutError:
             return []
@@ -1043,9 +1223,17 @@ class InstagramPlaywrightProfileFetcher(ProfileFetcher):
             visible_only=True,
         )
 
-        new_candidates: list[tuple[str, str | None]] = []
+        new_candidates: list[
+            tuple[
+                str,
+                str | None,
+            ]
+        ] = []
 
-        for raw_url, title in fallback_candidates:
+        for (
+            raw_url,
+            title,
+        ) in fallback_candidates:
             normalized_url = self._unwrap_instagram_redirect(raw_url)
 
             if not self._is_external_url(normalized_url):
@@ -1271,7 +1459,7 @@ class InstagramPlaywrightProfileFetcher(ProfileFetcher):
             except Exception:
                 continue
 
-        buttons = header.locator("button").filter(has_text=(self._MORE_LINKS_PATTERN))
+        buttons = header.locator("button").filter(has_text=self._MORE_LINKS_PATTERN)
 
         try:
             count = buttons.count()
@@ -1290,7 +1478,7 @@ class InstagramPlaywrightProfileFetcher(ProfileFetcher):
                 continue
 
         role_buttons = header.locator('[role="button"]').filter(
-            has_text=(self._MORE_LINKS_PATTERN)
+            has_text=self._MORE_LINKS_PATTERN
         )
 
         try:
@@ -1314,7 +1502,12 @@ class InstagramPlaywrightProfileFetcher(ProfileFetcher):
     def _collect_from_visible_link_dialogs(
         self,
         page: Page,
-    ) -> list[tuple[str, str | None]]:
+    ) -> list[
+        tuple[
+            str,
+            str | None,
+        ]
+    ]:
         dialogs = page.locator('[role="dialog"]:visible')
 
         try:
@@ -1334,9 +1527,17 @@ class InstagramPlaywrightProfileFetcher(ProfileFetcher):
                 visible_only=True,
             )
 
-            external_candidates: list[tuple[str, str | None]] = []
+            external_candidates: list[
+                tuple[
+                    str,
+                    str | None,
+                ]
+            ] = []
 
-            for raw_url, title in candidates:
+            for (
+                raw_url,
+                title,
+            ) in candidates:
                 normalized_url = self._unwrap_instagram_redirect(raw_url)
 
                 if self._is_external_url(normalized_url):
@@ -1363,7 +1564,10 @@ class InstagramPlaywrightProfileFetcher(ProfileFetcher):
 
         result: set[str] = set()
 
-        for raw_url, _ in candidates:
+        for (
+            raw_url,
+            _,
+        ) in candidates:
             normalized_url = self._unwrap_instagram_redirect(raw_url)
 
             if not self._is_external_url(normalized_url):
@@ -1381,28 +1585,42 @@ class InstagramPlaywrightProfileFetcher(ProfileFetcher):
         *,
         container: Locator,
         visible_only: bool = False,
-    ) -> list[tuple[str, str | None]]:
+    ) -> list[
+        tuple[
+            str,
+            str | None,
+        ]
+    ]:
         if container.count() == 0:
             return []
 
         selector = "a[href]:visible" if visible_only else "a[href]"
 
-        raw_candidates = container.locator(selector).evaluate_all("""
-                elements => elements.map(
-                    element => ({
-                        href:
-                            element.href || "",
-                        text:
-                            (
-                                element.innerText ||
-                                element.textContent ||
-                                ""
-                            ).trim()
-                    })
-                )
-                """)
+        try:
+            raw_candidates = container.locator(selector).evaluate_all("""
+                    elements => elements.map(
+                        element => ({
+                            href:
+                                element.href || "",
+                            text:
+                                (
+                                    element.innerText ||
+                                    element.textContent ||
+                                    ""
+                                ).trim()
+                        })
+                    )
+                    """)
 
-        candidates: list[tuple[str, str | None]] = []
+        except Exception:
+            return []
+
+        candidates: list[
+            tuple[
+                str,
+                str | None,
+            ]
+        ] = []
 
         if not isinstance(
             raw_candidates,
@@ -1465,61 +1683,22 @@ class InstagramPlaywrightProfileFetcher(ProfileFetcher):
 
         normalized_current_username = current_username.strip().lstrip("@").lower()
 
-        blocked_first_segments = {
-            "accounts",
-            "about",
-            "api",
-            "developer",
-            "developers",
-            "direct",
-            "directory",
-            "explore",
-            "legal",
-            "oauth",
-            "p",
-            "privacy",
-            "reel",
-            "reels",
-            "stories",
-            "web",
-        }
+        for (
+            raw_url,
+            raw_title,
+        ) in raw_candidates:
+            linked_username = self._instagram_username_from_url(raw_url)
 
-        username_pattern = re.compile(r"^[a-zA-Z0-9._]+$")
-
-        for raw_url, raw_title in raw_candidates:
-            parsed = urlparse(raw_url)
-
-            hostname = (parsed.hostname or "").lower()
-
-            if hostname not in {
-                "instagram.com",
-                "www.instagram.com",
-            }:
-                continue
-
-            path_parts = [part for part in parsed.path.split("/") if part]
-
-            if len(path_parts) != 1:
-                continue
-
-            linked_username = path_parts[0].strip().lower()
-
-            if not linked_username:
+            if linked_username is None:
                 continue
 
             if linked_username == normalized_current_username:
                 continue
 
-            if linked_username in blocked_first_segments:
-                continue
-
-            if username_pattern.fullmatch(linked_username) is None:
+            if linked_username in seen:
                 continue
 
             canonical_url = "https://www.instagram.com/" f"{linked_username}/"
-
-            if linked_username in seen:
-                continue
 
             title = self._clean_link_title(raw_title)
 
@@ -1530,7 +1709,7 @@ class InstagramPlaywrightProfileFetcher(ProfileFetcher):
                 link = ExternalLink(
                     url=HttpUrl(canonical_url),
                     title=title,
-                    type=(ExternalLinkType.INSTAGRAM),
+                    type=ExternalLinkType.INSTAGRAM,
                 )
 
             except ValueError:
@@ -1541,6 +1720,46 @@ class InstagramPlaywrightProfileFetcher(ProfileFetcher):
             seen.add(linked_username)
 
         return tuple(links)
+
+    def _instagram_username_from_url(
+        self,
+        url: str,
+    ) -> str | None:
+        parsed = urlparse(url)
+
+        hostname = (parsed.hostname or "").lower()
+
+        if hostname not in {
+            "instagram.com",
+            "www.instagram.com",
+        }:
+            return None
+
+        path_parts = [part for part in parsed.path.split("/") if part]
+
+        if len(path_parts) != 1:
+            return None
+
+        username = path_parts[0].strip().lower()
+
+        if not self._is_valid_instagram_username(username):
+            return None
+
+        return username
+
+    def _is_valid_instagram_username(
+        self,
+        username: str,
+    ) -> bool:
+        normalized = username.strip().lstrip("@").lower()
+
+        if not normalized:
+            return False
+
+        if normalized in self._BLOCKED_INSTAGRAM_FIRST_SEGMENTS:
+            return False
+
+        return self._INSTAGRAM_USERNAME_PATTERN.fullmatch(normalized) is not None
 
     @classmethod
     def _clean_link_title(
@@ -1647,7 +1866,7 @@ class InstagramPlaywrightProfileFetcher(ProfileFetcher):
 
         query = f"?{parsed.query}" if parsed.query else ""
 
-        return f"{hostname}{path}{query}"
+        return f"{hostname}" f"{path}" f"{query}"
 
     @staticmethod
     def _unwrap_instagram_redirect(

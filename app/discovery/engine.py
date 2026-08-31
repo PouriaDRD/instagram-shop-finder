@@ -1,4 +1,4 @@
-"""Automatic discovery pipeline for identifying and storing Instagram shop profiles."""
+"""Progressive automatic discovery pipeline for identifying and storing Instagram shop profiles."""
 
 from dataclasses import dataclass
 
@@ -32,6 +32,9 @@ from app.models.profile import (
     InstagramProfile,
     ProfileCategory,
 )
+from app.models.raw_profile import (
+    RawProfileData,
+)
 from app.storage.json_storage import (
     JsonProfileStorage,
 )
@@ -42,7 +45,7 @@ from app.storage.json_storage import (
     slots=True,
 )
 class DiscoveryCriteria:
-    """Configurable constraints and parameters governing a shop discovery run.
+    """Configurable constraints and parameters governing a progressive discovery run.
 
     Attributes:
         category: Target ProfileCategory to search for (None searches across all categories).
@@ -51,7 +54,7 @@ class DiscoveryCriteria:
         max_followers: Optional maximum follower count threshold.
         min_shop_score: Minimum shop confidence score required to match (0.0 to 1.0).
         additional_query: Optional search keyword or phrase appended to search queries.
-        max_candidates: Maximum number of candidate usernames to retrieve from web search.
+        max_candidates: Upper limit of total candidate handles to discover across queries.
     """
 
     category: ProfileCategory | None
@@ -66,7 +69,7 @@ class DiscoveryCriteria:
 
     additional_query: str | None = None
 
-    max_candidates: int = 200
+    max_candidates: int = 500
 
     def __post_init__(
         self,
@@ -100,10 +103,10 @@ class DiscoveryCriteria:
     slots=True,
 )
 class DiscoveryResult:
-    """Telemetry and profile collection outputs returned by a discovery run.
+    """Telemetry and profile collection outputs returned by a progressive discovery run.
 
     Attributes:
-        discovered_candidates: Total count of candidate handles obtained from discovery sources.
+        discovered_candidates: Total count of unique candidate handles discovered across queries.
         checked_profiles: Total count of public Instagram profiles fetched successfully.
         matched_profiles: Tuple of InstagramProfile objects that satisfied criteria and were saved.
         rejected_profiles: Count of fetched profiles that failed filter criteria evaluation.
@@ -131,60 +134,112 @@ class DiscoveryResult:
 
 
 class InstagramShopDiscoveryEngine:
-    """Automatic shop discovery pipeline.
+    """Progressive automatic Instagram shop discovery engine.
+
+    Instead of collecting a fixed candidate pool prior to crawling, queries are executed
+    sequentially and discovered candidates are fetched, classified, and filtered immediately.
 
     Pipeline:
-        search queries
-            ↓
-        candidate usernames
-            ↓
-        public Instagram fetch
-            ↓
-        shop/category classification
-            ↓
-        follower/category/shop filtering
-            ↓
-        save matching shops
+        search query -> candidate batch -> fetch profile -> classify -> filter -> persist
+
+    Discovery stops when:
+    - target_results matches are saved
+    - max_candidates evaluation budget is reached
+    - search queries are exhausted
+    - crawl-session safety stops the process (rate limits)
     """
 
-    # Category-specific search term templates for web search candidate discovery
+    # Expanded category-specific search term templates for web search candidate discovery
     _CATEGORY_SEARCH_TERMS: dict[
         ProfileCategory,
         tuple[str, ...],
     ] = {
         ProfileCategory.BEAUTY: (
             '"فروشگاه آرایشی"',
+            '"فروشگاه آرایشی بهداشتی"',
             '"لوازم آرایشی"',
-            '"میکاپ" "فروشگاه"',
-            '"beauty shop"',
+            '"لوازم آرایشی" خرید',
+            '"لوازم آرایشی" ارسال',
+            '"لوازم آرایشی" سفارش',
+            '"محصولات آرایشی" خرید',
+            '"محصولات آرایشی" ارسال',
+            '"مراقبت پوست" خرید',
+            '"مراقبت پوست" فروش',
+            '"مراقبت پوست" سفارش',
+            '"میکاپ" فروشگاه',
+            '"آرایشی" دایرکت',
+            '"آرایشی" سایت',
+            '"cosmetics shop" iran',
+            '"beauty shop" iran',
+            '"skincare shop" iran',
         ),
         ProfileCategory.CLOTHING: (
             '"فروشگاه لباس"',
             '"فروشگاه پوشاک"',
+            '"لباس" خرید',
+            '"لباس" ارسال',
+            '"لباس" سفارش',
+            '"پوشاک" خرید',
+            '"پوشاک" ارسال',
+            '"مانتو" فروشگاه',
+            '"لباس زنانه" فروشگاه',
+            '"لباس مردانه" فروشگاه',
             '"لباس زیر" فروشگاه',
-            '"clothing shop"',
+            '"لباس زیر" خرید',
+            '"لباس خواب" فروشگاه',
+            '"clothing shop" iran',
+            '"fashion store" iran',
         ),
         ProfileCategory.FASHION: (
             '"فشن" فروشگاه',
             '"استایل" فروشگاه',
-            '"fashion shop"',
+            '"استایل" خرید',
+            '"فشن" خرید',
+            '"fashion shop" iran',
+            '"fashion store" iran',
+            '"style shop" iran',
         ),
         ProfileCategory.HOME: (
             '"فروشگاه لوازم خانگی"',
+            '"لوازم خانگی" خرید',
+            '"لوازم خانگی" ارسال',
+            '"لوازم خانگی" سفارش',
             '"لوازم خانه" فروشگاه',
+            '"لوازم خانه" خرید',
             '"لوازم آشپزخانه" فروشگاه',
+            '"لوازم آشپزخانه" خرید',
+            '"دکوراسیون" فروشگاه',
+            '"دکور" خرید',
+            '"home appliance" iran instagram',
+            '"home decor shop" iran',
         ),
         ProfileCategory.ACCESSORIES: (
             '"فروشگاه اکسسوری"',
+            '"اکسسوری" خرید',
+            '"اکسسوری" ارسال',
             '"بدلیجات" فروشگاه',
+            '"بدلیجات" خرید',
             '"زیورآلات" فروشگاه',
-            '"accessories shop"',
+            '"زیورآلات" خرید',
+            '"گردنبند" فروشگاه',
+            '"دستبند" فروشگاه',
+            '"accessories shop" iran',
+            '"jewelry shop" iran',
         ),
         ProfileCategory.TOYS: (
             '"فروشگاه اسباب بازی"',
             '"اسباب بازی" خرید',
             '"اسباب بازی" ارسال',
-            '"toy store"',
+            '"اسباب بازی" سفارش',
+            '"اسباب بازی" دایرکت',
+            '"عروسک" فروشگاه',
+            '"عروسک" خرید',
+            '"لگو" فروشگاه',
+            '"لگو" خرید',
+            '"بازی فکری" فروشگاه',
+            '"بازی فکری" خرید',
+            '"toy store" iran',
+            '"toy shop" iran',
         ),
     }
 
@@ -199,7 +254,7 @@ class InstagramShopDiscoveryEngine:
         link_classifier: LinkClassifier | None = None,
         filter_engine: ProfileFilterEngine | None = None,
     ) -> None:
-        """Initializes the discovery engine with data sources, storage, and classification tools."""
+        """Initializes the progressive discovery engine with sources, storage, and classifiers."""
         self._source = source
         self._storage = storage
 
@@ -217,29 +272,23 @@ class InstagramShopDiscoveryEngine:
         self,
         criteria: DiscoveryCriteria,
     ) -> DiscoveryResult:
-        """Executes the full shop discovery pipeline according to the provided criteria.
+        """Executes progressive shop discovery sequentially across queries until criteria are satisfied.
 
         Args:
             criteria: DiscoveryCriteria instance specifying search targets and constraints.
 
         Returns:
-            A DiscoveryResult summary containing matched profiles and telemetry counters.
+            A DiscoveryResult summary containing matched profiles and telemetry metrics.
         """
-        # Step 1: Construct web search queries based on category and optional phrases
+        # Step 1: Build deduplicated web search queries based on criteria
         queries = self._build_queries(criteria)
 
-        # Step 2: Query candidate source for raw Instagram handles
-        candidates = self._discover_candidates(
-            queries=queries,
-            max_candidates=(criteria.max_candidates),
-        )
-
-        # Pre-load existing usernames from storage to avoid re-fetching known profiles
+        # Cache existing stored usernames to skip redundant crawling
         stored_usernames = {
             profile.username.lower() for profile in self._storage.get_all()
         }
 
-        # Configure profile filter engine criteria
+        # Configure profile filter criteria
         filter_criteria = ProfileFilter(
             is_shop=True,
             category=criteria.category,
@@ -250,80 +299,138 @@ class InstagramShopDiscoveryEngine:
 
         matches: list[InstagramProfile] = []
 
+        seen_candidates: set[str] = set()
+
+        discovered_candidates = 0
         checked_profiles = 0
         rejected_profiles = 0
         failed_profiles = 0
         skipped_existing = 0
         stopped_by_rate_limit = False
 
-        # Step 3: Iterate candidates within a managed crawl session
+        # Step 2: Progressively iterate search queries and process candidates on the fly
         try:
             with self._crawl_session:
-                for username in candidates:
-                    # Halt processing if desired target count is reached
+                for query in queries:
                     if len(matches) >= criteria.target_results:
                         break
 
-                    # Skip candidate if profile is already stored locally
-                    if username.lower() in stored_usernames:
-                        skipped_existing += 1
-                        continue
-
-                    # Fetch raw public profile metadata
-                    try:
-                        raw = self._crawl_session.fetch(username)
-
-                    except CrawlSessionStoppedError:
-                        stopped_by_rate_limit = True
+                    if discovered_candidates >= criteria.max_candidates:
                         break
 
-                    except ProfileFetchError:
-                        failed_profiles += 1
-                        continue
-
-                    checked_profiles += 1
-
-                    # Map raw profile data to standard InstagramProfile domain model
-                    profile = InstagramProfile(
-                        username=raw.username,
-                        profile_url=("https://www.instagram.com/" f"{raw.username}/"),
-                        display_name=(raw.display_name),
-                        bio=raw.bio,
-                        external_links=(raw.external_links),
-                        followers_count=(raw.followers_count),
-                        following_count=(raw.following_count),
-                        posts_count=(raw.posts_count),
-                        is_public=raw.is_public,
+                    remaining_candidate_budget = (
+                        criteria.max_candidates - discovered_candidates
                     )
 
-                    # Step 4: Run classifiers (shop, category, external link)
-                    profile = apply_classifications(
-                        profile,
-                        shop_classifier=(self._shop_classifier),
-                        category_classifier=(self._category_classifier),
-                        link_classifier=(self._link_classifier),
+                    query_limit = min(
+                        50,
+                        remaining_candidate_budget,
                     )
 
-                    # Step 5: Evaluate profile against filter criteria
-                    if not self._filter_engine.matches(
-                        profile=profile,
-                        criteria=filter_criteria,
-                    ):
-                        rejected_profiles += 1
-                        continue
+                    if query_limit <= 0:
+                        break
 
-                    # Step 6: Persist matching shop profile to storage
-                    self._storage.save(profile)
+                    candidates = self._source.discover(
+                        query=query,
+                        limit=query_limit,
+                    )
 
-                    stored_usernames.add(profile.username.lower())
+                    for username in candidates:
+                        if len(matches) >= criteria.target_results:
+                            break
 
-                    matches.append(profile)
+                        if discovered_candidates >= criteria.max_candidates:
+                            break
+
+                        normalized_username = username.strip().lstrip("@").lower()
+
+                        if not normalized_username:
+                            continue
+
+                        if normalized_username in seen_candidates:
+                            continue
+
+                        seen_candidates.add(normalized_username)
+
+                        discovered_candidates += 1
+
+                        # Skip handle if already present in storage
+                        if normalized_username in stored_usernames:
+                            skipped_existing += 1
+                            continue
+
+                        print(
+                            f"Checking @{normalized_username} "
+                            f"({discovered_candidates}/{criteria.max_candidates})..."
+                        )
+
+                        # Step 3: Fetch public profile metadata
+                        try:
+                            raw = self._crawl_session.fetch(normalized_username)
+
+                        except CrawlSessionStoppedError:
+                            stopped_by_rate_limit = True
+                            break
+
+                        except ProfileFetchError as exc:
+                            failed_profiles += 1
+
+                            print(f"   fetch failed: {exc}")
+
+                            continue
+
+                        checked_profiles += 1
+
+                        profile = self._profile_from_raw(raw)
+
+                        # Step 4: Run classifiers (shop, category, link)
+                        profile = apply_classifications(
+                            profile,
+                            shop_classifier=(self._shop_classifier),
+                            category_classifier=(self._category_classifier),
+                            link_classifier=(self._link_classifier),
+                        )
+
+                        # Step 5: Evaluate against filter criteria
+                        if not self._filter_engine.matches(
+                            profile=profile,
+                            criteria=filter_criteria,
+                        ):
+                            rejected_profiles += 1
+
+                            print(
+                                "   rejected"
+                                f" | followers={profile.followers_count:,}"
+                                f" | category={profile.category.value}"
+                                f" | is_shop={profile.is_shop}"
+                                f" | score={self._score_label(profile)}"
+                            )
+
+                            continue
+
+                        # Step 6: Persist matching profile
+                        self._storage.save(profile)
+
+                        stored_usernames.add(profile.username.lower())
+
+                        matches.append(profile)
+
+                        print(
+                            "   MATCH"
+                            f" | followers={profile.followers_count:,}"
+                            f" | category={profile.category.value}"
+                            f" | score={self._score_label(profile)}"
+                            f" | total={len(matches)}/{criteria.target_results}"
+                        )
+
+                    if stopped_by_rate_limit:
+                        break
 
         except CrawlSessionStoppedError:
             stopped_by_rate_limit = True
 
         return DiscoveryResult(
-            discovered_candidates=len(candidates),
+            discovered_candidates=(discovered_candidates),
             checked_profiles=(checked_profiles),
             matched_profiles=tuple(matches),
             rejected_profiles=(rejected_profiles),
@@ -332,26 +439,47 @@ class InstagramShopDiscoveryEngine:
             stopped_by_rate_limit=(stopped_by_rate_limit),
         )
 
+    @staticmethod
+    def _profile_from_raw(
+        raw: RawProfileData,
+    ) -> InstagramProfile:
+        """Maps a raw scraped profile data object to an InstagramProfile domain model."""
+        return InstagramProfile(
+            username=raw.username,
+            profile_url=("https://www.instagram.com/" f"{raw.username}/"),
+            display_name=(raw.display_name),
+            bio=raw.bio,
+            external_links=(raw.external_links),
+            followers_count=(raw.followers_count),
+            following_count=(raw.following_count),
+            posts_count=(raw.posts_count),
+            is_public=raw.is_public,
+        )
+
+    @staticmethod
+    def _score_label(
+        profile: InstagramProfile,
+    ) -> str:
+        """Formats a profile's shop score as a percentage string or placeholder."""
+        if profile.shop_score is None:
+            return "-"
+
+        return f"{profile.shop_score:.0%}"
+
     def _build_queries(
         self,
         criteria: DiscoveryCriteria,
     ) -> tuple[str, ...]:
-        """Builds deduplicated search engine queries based on discovery category and additional terms."""
+        """Builds deduplicated search queries based on target categories and additional terms."""
         additional = (
             criteria.additional_query.strip() if criteria.additional_query else ""
         )
 
-        categories: tuple[
-            ProfileCategory,
-            ...,
-        ]
-
-        # Target specific category or expand across all non-UNKNOWN categories
         if criteria.category is None:
             categories = tuple(
                 category
                 for category in ProfileCategory
-                if category != ProfileCategory.UNKNOWN
+                if (category != ProfileCategory.UNKNOWN)
             )
 
         else:
@@ -362,12 +490,12 @@ class InstagramShopDiscoveryEngine:
         seen: set[str] = set()
 
         for category in categories:
-            category_terms = self._CATEGORY_SEARCH_TERMS.get(
+            terms = self._CATEGORY_SEARCH_TERMS.get(
                 category,
                 (f'"{category.value}" ' '"فروشگاه"',),
             )
 
-            for term in category_terms:
+            for term in terms:
                 parts = [
                     "site:instagram.com",
                     term,
@@ -378,63 +506,13 @@ class InstagramShopDiscoveryEngine:
 
                 query = " ".join(parts)
 
-                if query in seen:
+                normalized_query = query.casefold()
+
+                if normalized_query in seen:
                     continue
 
-                seen.add(query)
+                seen.add(normalized_query)
 
                 queries.append(query)
 
         return tuple(queries)
-
-    def _discover_candidates(
-        self,
-        *,
-        queries: tuple[str, ...],
-        max_candidates: int,
-    ) -> list[str]:
-        """Queries the candidate source across generated queries to collect unique Instagram handles."""
-        candidates: list[str] = []
-
-        seen: set[str] = set()
-
-        if not queries:
-            return []
-
-        # Calculate per-query candidate allocation limit
-        per_query_limit = max(
-            5,
-            (max_candidates + len(queries) - 1) // len(queries),
-        )
-
-        for query in queries:
-            remaining = max_candidates - len(candidates)
-
-            if remaining <= 0:
-                break
-
-            discovered = self._source.discover(
-                query=query,
-                limit=min(
-                    per_query_limit,
-                    remaining,
-                ),
-            )
-
-            for username in discovered:
-                normalized = username.strip().lstrip("@").lower()
-
-                if not normalized:
-                    continue
-
-                if normalized in seen:
-                    continue
-
-                seen.add(normalized)
-
-                candidates.append(normalized)
-
-                if len(candidates) >= max_candidates:
-                    break
-
-        return candidates

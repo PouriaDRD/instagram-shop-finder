@@ -3,6 +3,7 @@
 geoip/*.mmdb
 
 # data
+data/*
 data/*.json
 data/*.csv
 data/*.db

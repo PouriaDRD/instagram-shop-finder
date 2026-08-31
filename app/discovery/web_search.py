@@ -1,69 +1,27 @@
+from __future__ import annotations
+
 import re
 import time
 from collections.abc import Callable
-from html.parser import HTMLParser
-from urllib.parse import (
-    parse_qs,
-    quote_plus,
-    unquote,
-    urlparse,
-)
-from urllib.request import (
-    Request,
-    urlopen,
-)
+from urllib.parse import parse_qs, unquote, urlparse
+
+import requests
+from bs4 import BeautifulSoup
 
 from app.discovery.base import DiscoverySource
 
 
-class _SearchResultLinkParser(HTMLParser):
-    """
-    Minimal HTML parser for collecting search-result links.
-
-    We intentionally avoid depending on BeautifulSoup or another
-    third-party HTML parsing package.
-    """
-
-    def __init__(self) -> None:
-        super().__init__()
-
-        self.links: list[str] = []
-
-    def handle_starttag(
-        self,
-        tag: str,
-        attrs: list[tuple[str, str | None]],
-    ) -> None:
-        if tag.lower() != "a":
-            return
-
-        attributes = dict(attrs)
-
-        href = attributes.get("href")
-
-        if not href:
-            return
-
-        self.links.append(href)
-
-
 class WebSearchDiscoverySource(DiscoverySource):
     """
-    Discover candidate public Instagram usernames through ordinary
-    public web-search results.
+    Public web-search discovery using DuckDuckGo Lite.
 
-    This class does NOT:
-    - log in to Instagram
-    - bypass CAPTCHA
-    - bypass search-engine restrictions
-    - use stealth browser techniques
-    - bypass rate limits
+    BeautifulSoup is used only for parsing public HTML.
 
-    If the search source stops returning accessible public results,
-    the caller simply receives fewer or zero candidates.
+    No login, CAPTCHA bypass, proxy rotation, stealth,
+    or rate-limit circumvention is performed.
     """
 
-    _SEARCH_URL = "https://html.duckduckgo.com/html/"
+    _SEARCH_URL = "https://lite.duckduckgo.com/lite/"
 
     _BLOCKED_INSTAGRAM_SEGMENTS = {
         "about",
@@ -99,92 +57,19 @@ class WebSearchDiscoverySource(DiscoverySource):
         self,
         *,
         timeout_seconds: float = 15.0,
-        request_delay_seconds: float = 1.0,
-        sleeper: Callable[
-            [float],
-            None,
-        ] = time.sleep,
+        request_delay_seconds: float = 1.5,
+        max_pages_per_query: int = 5,
+        sleeper: Callable[[float], None] = time.sleep,
     ) -> None:
         self._timeout_seconds = timeout_seconds
-
         self._request_delay_seconds = request_delay_seconds
-
+        self._max_pages_per_query = max_pages_per_query
         self._sleeper = sleeper
 
-    def discover(self, *, query: str, limit: int) -> list[str]:
-        if limit <= 0:
-            return []
+        self._session = requests.Session()
 
-        normalized_query = query.strip()
-
-        if not normalized_query:
-            return []
-
-        usernames: list[str] = []
-
-        seen: set[str] = set()
-
-        # A few ordinary result pages are enough for the
-        # first discovery implementation.
-        #
-        # We intentionally keep this bounded.
-        page_offsets = (
-            0,
-            30,
-            60,
-            90,
-        )
-
-        for page_index, offset in enumerate(page_offsets):
-            if len(usernames) >= limit:
-                break
-
-            if page_index > 0:
-                self._sleeper(self._request_delay_seconds)
-
-            html = self._fetch_search_page(
-                query=normalized_query,
-                offset=offset,
-            )
-
-            if not html:
-                break
-
-            candidates = self._extract_usernames(html)
-
-            new_count = 0
-
-            for username in candidates:
-                key = username.lower()
-
-                if key in seen:
-                    continue
-
-                seen.add(key)
-
-                usernames.append(username)
-
-                new_count += 1
-
-                if len(usernames) >= limit:
-                    break
-
-            # If a result page produced nothing new,
-            # continuing to request more pages usually
-            # provides little value.
-            if new_count == 0:
-                break
-
-        return usernames
-
-    def _fetch_search_page(self, *, query: str, offset: int) -> str:
-        encoded_query = quote_plus(query)
-
-        url = f"{self._SEARCH_URL}" f"?q={encoded_query}" f"&s={offset}"
-
-        request = Request(
-            url,
-            headers={
+        self._session.headers.update(
+            {
                 "User-Agent": (
                     "Mozilla/5.0 "
                     "(Windows NT 10.0; Win64; x64) "
@@ -192,77 +77,138 @@ class WebSearchDiscoverySource(DiscoverySource):
                     "(KHTML, like Gecko) "
                     "Chrome/131.0 Safari/537.36"
                 ),
-                "Accept": ("text/html," "application/xhtml+xml"),
-                "Accept-Language": ("en-US,en;q=0.9"),
-            },
-            method="GET",
+                "Accept": (
+                    "text/html,"
+                    "application/xhtml+xml,"
+                    "application/xml;q=0.9,"
+                    "*/*;q=0.8"
+                ),
+                "Accept-Language": "en-US,en;q=0.9",
+            }
         )
 
-        try:
-            with urlopen(
-                request,
-                timeout=self._timeout_seconds,
-            ) as response:
-                status = getattr(
-                    response,
-                    "status",
-                    200,
-                )
+    def discover(
+        self,
+        *,
+        query: str,
+        limit: int,
+    ) -> list[str]:
+        if limit <= 0:
+            return []
 
-                if status != 200:
-                    return ""
+        query = query.strip()
 
-                raw = response.read()
+        if not query:
+            return []
 
-        except Exception:
-            return ""
-
-        try:
-            return raw.decode(
-                "utf-8",
-                errors="replace",
-            )
-
-        except Exception:
-            return ""
-
-    def _extract_usernames(self, html: str) -> list[str]:
         usernames: list[str] = []
-
         seen: set[str] = set()
 
-        parser = _SearchResultLinkParser()
+        page_data: dict[str, str] = {
+            "q": query,
+        }
 
+        for page_index in range(self._max_pages_per_query):
+            if len(usernames) >= limit:
+                break
+
+            html = self._request_page(data=page_data)
+
+            if not html:
+                break
+
+            soup = BeautifulSoup(
+                html,
+                "html.parser",
+            )
+
+            found_on_page = self._extract_usernames(
+                soup=soup,
+                html=html,
+            )
+
+            new_count = 0
+
+            for username in found_on_page:
+                key = username.lower()
+
+                if key in seen:
+                    continue
+
+                seen.add(key)
+                usernames.append(username)
+                new_count += 1
+
+                if len(usernames) >= limit:
+                    break
+
+            next_data = self._extract_next_page_data(soup)
+
+            if not next_data:
+                break
+
+            if page_index > 0 and new_count == 0:
+                break
+
+            page_data = next_data
+
+            self._sleeper(self._request_delay_seconds)
+
+        return usernames
+
+    def _request_page(
+        self,
+        *,
+        data: dict[str, str],
+    ) -> str:
         try:
-            parser.feed(html)
+            response = self._session.post(
+                self._SEARCH_URL,
+                data=data,
+                timeout=self._timeout_seconds,
+            )
 
-        except Exception:
-            pass
+        except requests.RequestException:
+            return ""
 
-        for raw_url in parser.links:
-            target = self._unwrap_search_redirect(raw_url)
+        if response.status_code != 200:
+            return ""
+
+        if not response.text:
+            return ""
+
+        return response.text
+
+    def _extract_usernames(
+        self,
+        *,
+        soup: BeautifulSoup,
+        html: str,
+    ) -> list[str]:
+        usernames: list[str] = []
+        seen: set[str] = set()
+
+        for anchor in soup.find_all(
+            "a",
+            href=True,
+        ):
+            href = str(anchor.get("href") or "")
+
+            target = self._unwrap_search_redirect(href)
 
             username = self._username_from_instagram_url(target)
 
             if username is None:
                 continue
 
-            key = username.lower()
-
-            if key in seen:
+            if username in seen:
                 continue
 
-            seen.add(key)
-
+            seen.add(username)
             usernames.append(username)
 
-        # Search-result snippets sometimes contain a
-        # visible Instagram URL even when the anchor itself
-        # points through another search-engine route.
         for match in self._INSTAGRAM_TEXT_PATTERN.finditer(html):
-            username = match.group("username")
-
-            username = username.strip().lower()
+            username = match.group("username").strip().lower()
 
             if not self._is_valid_username(username):
                 continue
@@ -271,13 +217,50 @@ class WebSearchDiscoverySource(DiscoverySource):
                 continue
 
             seen.add(username)
-
             usernames.append(username)
 
         return usernames
 
     @staticmethod
-    def _unwrap_search_redirect(url: str) -> str:
+    def _extract_next_page_data(
+        soup: BeautifulSoup,
+    ) -> dict[str, str] | None:
+        forms = soup.find_all("form")
+
+        for form in forms:
+            inputs = form.find_all("input")
+
+            values: dict[str, str] = {}
+
+            has_next_signal = False
+
+            for input_element in inputs:
+                name = input_element.get("name")
+
+                value = input_element.get("value")
+
+                input_type = (str(input_element.get("type") or "")).lower()
+
+                if not name:
+                    continue
+
+                if value is None:
+                    value = ""
+
+                values[str(name)] = str(value)
+
+                if input_type == "submit" and "next" in str(value).lower():
+                    has_next_signal = True
+
+            if has_next_signal and "q" in values:
+                return values
+
+        return None
+
+    @staticmethod
+    def _unwrap_search_redirect(
+        url: str,
+    ) -> str:
         raw = url.strip()
 
         if raw.startswith("//"):
@@ -290,6 +273,7 @@ class WebSearchDiscoverySource(DiscoverySource):
         if hostname not in {
             "duckduckgo.com",
             "www.duckduckgo.com",
+            "lite.duckduckgo.com",
         }:
             return raw
 
@@ -302,7 +286,10 @@ class WebSearchDiscoverySource(DiscoverySource):
 
         return unquote(targets[0])
 
-    def _username_from_instagram_url(self, url: str) -> str | None:
+    def _username_from_instagram_url(
+        self,
+        url: str,
+    ) -> str | None:
         parsed = urlparse(url)
 
         hostname = (parsed.hostname or "").lower()
@@ -325,7 +312,10 @@ class WebSearchDiscoverySource(DiscoverySource):
 
         return username
 
-    def _is_valid_username(self, username: str) -> bool:
+    def _is_valid_username(
+        self,
+        username: str,
+    ) -> bool:
         if not username:
             return False
 
