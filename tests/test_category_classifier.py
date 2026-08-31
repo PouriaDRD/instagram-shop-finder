@@ -79,7 +79,6 @@ def test_saat_in_saaate_does_not_mean_accessories() -> None:
     )
 
     assert result.category != ProfileCategory.ACCESSORIES
-
     assert "ساعت" not in result.matched_signals
 
 
@@ -113,7 +112,6 @@ def test_shortologist_is_clothing() -> None:
     )
 
     assert result.category == ProfileCategory.CLOTHING
-
     assert "شورت" in result.matched_signals
 
 
@@ -126,3 +124,40 @@ def test_jjpoosh_underwear_is_clothing() -> None:
     )
 
     assert result.category == ProfileCategory.CLOTHING
+
+
+def test_toy_store_is_toys() -> None:
+    result = CategoryClassifier().classify(
+        make_profile(
+            display_name=("فروشگاه اسباب بازی کاظمی آبادان"),
+            bio=("خرید راحت از سایت"),
+        )
+    )
+
+    assert result.category == ProfileCategory.TOYS
+    assert result.score == 0.25
+    assert "اسباب بازی" in result.matched_signals
+
+
+def test_toy_store_without_shop_word_is_toys() -> None:
+    result = CategoryClassifier().classify(
+        make_profile(
+            display_name=("اسباب بازی محمدی"),
+            bio=("انتخاب برندهای معتبر جهانی " "و خرید حضوری و آنلاین"),
+        )
+    )
+
+    assert result.category == ProfileCategory.TOYS
+    assert "اسباب بازی" in result.matched_signals
+
+
+def test_toys_category_detects_compact_persian_spelling() -> None:
+    result = CategoryClassifier().classify(make_profile(bio="فروش اسباببازی Rad"))
+
+    assert result.category == ProfileCategory.TOYS
+
+
+def test_toys_category_detects_english_toy() -> None:
+    result = CategoryClassifier().classify(make_profile(bio="Toy store for kids"))
+
+    assert result.category == ProfileCategory.TOYS

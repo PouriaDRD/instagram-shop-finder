@@ -1,4 +1,5 @@
 from pydantic import HttpUrl
+
 from app.crawler.playwright_scraper import (
     InstagramPlaywrightProfileFetcher,
 )
@@ -18,6 +19,10 @@ def test_parse_compact_count_k() -> None:
 
 def test_parse_compact_count_m() -> None:
     assert InstagramPlaywrightProfileFetcher._parse_compact_count("1.5M") == 1_500_000
+
+
+def test_parse_compact_count_decimal_m() -> None:
+    assert InstagramPlaywrightProfileFetcher._parse_compact_count("13.5M") == 13_500_000
 
 
 def test_parse_plain_count() -> None:
@@ -52,6 +57,77 @@ def test_extract_stats() -> None:
         )
         == 331
     )
+
+
+def test_extract_count_returns_none_when_missing() -> None:
+    fetcher = make_fetcher()
+
+    assert (
+        fetcher._extract_count(
+            text="no statistics here",
+            label="followers",
+        )
+        is None
+    )
+
+
+def test_metric_prefers_visible_header_over_meta() -> None:
+    fetcher = make_fetcher()
+
+    result = fetcher._extract_count_with_fallback(
+        label="followers",
+        header_text=("13.5M followers"),
+        description=("14M followers, " "375 following, " "846 posts"),
+        body_text=("15M followers"),
+    )
+
+    assert result == 13_500_000
+
+
+def test_metric_falls_back_to_meta_when_header_missing() -> None:
+    fetcher = make_fetcher()
+
+    result = fetcher._extract_count_with_fallback(
+        label="followers",
+        header_text=("341 following\n" "846 posts"),
+        description=("14M followers, " "375 following, " "846 posts"),
+        body_text=("15M followers"),
+    )
+
+    assert result == 14_000_000
+
+
+def test_each_metric_uses_fallback_independently() -> None:
+    fetcher = make_fetcher()
+
+    header_text = "13.5M followers\n" "341 following"
+
+    description = "14M followers, " "375 following, " "846 posts"
+
+    followers = fetcher._extract_count_with_fallback(
+        label="followers",
+        header_text=header_text,
+        description=description,
+        body_text="",
+    )
+
+    following = fetcher._extract_count_with_fallback(
+        label="following",
+        header_text=header_text,
+        description=description,
+        body_text="",
+    )
+
+    posts = fetcher._extract_count_with_fallback(
+        label="posts",
+        header_text=header_text,
+        description=description,
+        body_text="",
+    )
+
+    assert followers == 13_500_000
+    assert following == 341
+    assert posts == 846
 
 
 def test_clean_unicode_text() -> None:
@@ -144,6 +220,65 @@ def test_bio_stops_at_visible_domain_and_more() -> None:
     )
 
 
+def test_bio_stops_at_real_highlight_title() -> None:
+    fetcher = make_fetcher()
+
+    result = fetcher._extract_bio_from_header(
+        username="toys_kazemi",
+        display_name=("فروشگاه اسباب بازی کاظمی آبادان"),
+        header_text=(
+            "toys_kazemi\n"
+            "31K followers\n"
+            "403 following\n"
+            "821 posts\n"
+            "فروشگاه اسباب بازی کاظمی آبادان\n"
+            "🔆ما اینجا فقط اسباب بازی نمیفروشیم، شادی میفروشیم😍\n"
+            "آبادان؛احمد اباد،۱۱فرعی،بین لین ۱ و ۲اصلی📍\n"
+            "👇خرید راحت از سایت👇...\n"
+            "کد رهگیری ۳\n"
+            "عروسک جدید\n"
+            "کد رهگیری ۲\n"
+            "بسته های ارسالی\n"
+        ),
+        external_links=(),
+        highlight_titles=(
+            "کد رهگیری ۳",
+            "عروسک جدید",
+            "کد رهگیری ۲",
+            "بسته های ارسالی",
+        ),
+    )
+
+    assert result == (
+        "🔆ما اینجا فقط اسباب بازی نمیفروشیم، شادی میفروشیم😍\n"
+        "آبادان؛احمد اباد،۱۱فرعی،بین لین ۱ و ۲اصلی📍\n"
+        "👇خرید راحت از سایت👇..."
+    )
+
+
+def test_bio_highlight_matching_normalizes_persian_characters() -> None:
+    fetcher = make_fetcher()
+
+    result = fetcher._extract_bio_from_header(
+        username="test",
+        display_name="Test",
+        header_text=(
+            "test\n"
+            "10K followers\n"
+            "1 following\n"
+            "10 posts\n"
+            "Test\n"
+            "متن واقعی بایو\n"
+            "كدرهگيری\n"
+            "عنوان بعدی\n"
+        ),
+        external_links=(),
+        highlight_titles=("کدرهگیری",),
+    )
+
+    assert result == "متن واقعی بایو"
+
+
 def test_instagram_handle_is_not_visible_domain() -> None:
     fetcher = make_fetcher()
 
@@ -225,7 +360,7 @@ def test_ali_bio_stops_before_youtube_and_more() -> None:
     links = (
         ExternalLink(
             url=HttpUrl("https://youtube.com/channel/test"),
-            type=ExternalLinkType.WEBSITE,
+            type=ExternalLinkType.YOUTUBE,
         ),
     )
 
@@ -234,8 +369,8 @@ def test_ali_bio_stops_before_youtube_and_more() -> None:
         display_name="Ali Karimi",
         header_text=(
             "aliiiiiiiikarimi8\n"
-            "14M followers\n"
-            "375 following\n"
+            "13.5M followers\n"
+            "341 following\n"
             "846 posts\n"
             "Ali Karimi\n"
             "HumanRights💚🤍❤️\n"
@@ -303,6 +438,47 @@ def test_telegram_type() -> None:
     assert (
         InstagramPlaywrightProfileFetcher._detect_link_type("https://t.me/test")
         == ExternalLinkType.TELEGRAM
+    )
+
+
+def test_youtube_type() -> None:
+    assert (
+        InstagramPlaywrightProfileFetcher._detect_link_type(
+            "https://youtube.com/channel/UC123"
+        )
+        == ExternalLinkType.YOUTUBE
+    )
+
+
+def test_threads_type() -> None:
+    assert (
+        InstagramPlaywrightProfileFetcher._detect_link_type(
+            "https://www.threads.com/@test"
+        )
+        == ExternalLinkType.THREADS
+    )
+
+
+def test_twitter_type() -> None:
+    assert (
+        InstagramPlaywrightProfileFetcher._detect_link_type("https://twitter.com/test")
+        == ExternalLinkType.TWITTER
+    )
+
+
+def test_x_type_is_twitter() -> None:
+    assert (
+        InstagramPlaywrightProfileFetcher._detect_link_type("https://x.com/test")
+        == ExternalLinkType.TWITTER
+    )
+
+
+def test_google_maps_type() -> None:
+    assert (
+        InstagramPlaywrightProfileFetcher._detect_link_type(
+            "https://maps.app.goo.gl/test"
+        )
+        == ExternalLinkType.MAPS
     )
 
 
