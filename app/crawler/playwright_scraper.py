@@ -44,6 +44,7 @@ class InstagramPlaywrightProfileFetcher(ProfileFetcher):
     - Instagram profile links
     - sign-up dialog dismissal
     - DOM-aware highlight exclusion from profile bio
+    - visible-header-first profile metric extraction
     """
 
     _BASE_URL: Final[str] = "https://www.instagram.com"
@@ -273,21 +274,25 @@ class InstagramPlaywrightProfileFetcher(ProfileFetcher):
 
         display_name = self._parse_display_name(title) if title else None
 
-        stats_source = description or header_text or body_text
-
-        followers_count = self._extract_count(
-            text=stats_source,
+        followers_count = self._extract_count_with_fallback(
             label="followers",
+            header_text=header_text,
+            description=description,
+            body_text=body_text,
         )
 
-        following_count = self._extract_count(
-            text=stats_source,
+        following_count = self._extract_count_with_fallback(
             label="following",
+            header_text=header_text,
+            description=description,
+            body_text=body_text,
         )
 
-        posts_count = self._extract_count(
-            text=stats_source,
+        posts_count = self._extract_count_with_fallback(
             label="posts",
+            header_text=header_text,
+            description=description,
+            body_text=body_text,
         )
 
         external_links = self._extract_external_links(
@@ -443,13 +448,6 @@ class InstagramPlaywrightProfileFetcher(ProfileFetcher):
         cls,
         page: Page,
     ) -> tuple[str, ...]:
-        """
-        Read visible Instagram Highlight titles directly
-        from their /stories/highlights/... anchors.
-
-        This gives us a reliable boundary between the
-        real profile bio and the Highlight carousel.
-        """
         header = page.locator("header").first
 
         if header.count() == 0:
@@ -612,9 +610,6 @@ class InstagramPlaywrightProfileFetcher(ProfileFetcher):
 
             comparison_line = self._normalize_comparison_text(line)
 
-            # Most reliable bio/highlight boundary:
-            # title was extracted from a real
-            # /stories/highlights/... anchor.
             if bio_started and comparison_line in normalized_highlight_titles:
                 break
 
@@ -826,12 +821,52 @@ class InstagramPlaywrightProfileFetcher(ProfileFetcher):
 
         return parsed.netloc.removeprefix("www.") + parsed.path.rstrip("/")
 
+    def _extract_count_with_fallback(
+        self,
+        *,
+        label: str,
+        header_text: str,
+        description: str | None,
+        body_text: str,
+    ) -> int:
+        """
+        Extract a profile metric using the freshest visible source first.
+
+        Priority:
+        1. visible profile header
+        2. OpenGraph description
+        3. body text
+
+        Each metric is resolved independently. For example, if followers
+        are present in the header but posts are not, posts may still fall
+        back to OpenGraph metadata.
+        """
+        sources = (
+            header_text,
+            description or "",
+            body_text,
+        )
+
+        for source in sources:
+            if not source:
+                continue
+
+            count = self._extract_count(
+                text=source,
+                label=label,
+            )
+
+            if count is not None:
+                return count
+
+        return 0
+
     def _extract_count(
         self,
         *,
         text: str,
         label: str,
-    ) -> int:
+    ) -> int | None:
         match = re.search(
             (rf"([\d.,]+(?:\.\d+)?" rf"\s*[KMB]?)" rf"\s+{re.escape(label)}"),
             text,
@@ -839,7 +874,7 @@ class InstagramPlaywrightProfileFetcher(ProfileFetcher):
         )
 
         if match is None:
-            return 0
+            return None
 
         return self._parse_compact_count(match.group(1))
 
