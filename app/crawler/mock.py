@@ -69,29 +69,3 @@ class MockProfileFetcher(ProfileFetcher):
 
         # Return a deep copy to prevent callers from mutating mock state
         return profile.model_copy(deep=True)
-
-    @staticmethod
-    def _normalize_username(username: str) -> str:
-        """Sanitizes raw username input by removing leading symbols, whitespace, and lowercasing.
-
-        Args:
-            username: The raw username string to normalize.
-
-        Returns:
-            Normalized lowercase username string without leading '@'.
-
-        Raises:
-            ValueError: If the normalized username is empty.
-        """
-        normalized = username.strip()
-
-        # Remove leading '@' prefix if present
-        if normalized.startswith("@"):
-            normalized = normalized[1:]
-
-        normalized = normalized.lower()
-
-        if not normalized:
-            raise ValueError("Username cannot be empty.")
-
-        return normalized

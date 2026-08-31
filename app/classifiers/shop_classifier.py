@@ -48,18 +48,17 @@ class ShopClassifier:
     """Heuristic rule-based classifier for detecting commercial e-commerce Instagram profiles.
 
     Evaluates keyword signals across profile metadata (bio, display name) and structural signals
-    (external links), applying category-specific synergy bonuses and multi-keyword name rules to
-    produce a confidence score.
+    (external links), applying normalization, prefix signal matching, shadowed signal filtering,
+    and category-specific synergy bonuses to calculate a confidence score.
     """
 
     # Base confidence weights for canonical keyword signals
-    _SIGNAL_WEIGHTS: dict[
-        str,
-        float,
-    ] = {
+    _SIGNAL_WEIGHTS: dict[str, float] = {
         "فروشگاه": 0.45,
         "فروش": 0.35,
         "شاپ": 0.35,
+        # Stronger intent signal than generic "سفارش"
+        "ثبت سفارش": 0.40,
         "سفارش": 0.30,
         "خرید": 0.30,
         "قیمت": 0.20,
@@ -84,29 +83,25 @@ class ShopClassifier:
     ] = {
         "فروشگاه": (
             "فروشگاه",
+            "فروشگاه ها",
             "فروشگاه‌ها",
             "فروشگاهها",
         ),
         "فروش": ("فروش",),
         "شاپ": ("شاپ",),
+        "ثبت سفارش": ("ثبت سفارش",),
         "سفارش": (
             "سفارش",
             "سفارشات",
         ),
-        "خرید": (
-            "خرید",
-            "خريد",
-        ),
+        "خرید": ("خرید",),
         "قیمت": (
             "قیمت",
-            "قيمت",
+            "قیمت ها",
             "قیمت‌ها",
             "قیمتها",
         ),
-        "موجودی": (
-            "موجودی",
-            "موجودي",
-        ),
+        "موجودی": ("موجودی",),
         "ارسال": ("ارسال",),
         "shop": ("shop",),
         "store": ("store",),
@@ -115,11 +110,7 @@ class ShopClassifier:
             "orders",
         ),
         "shipping": ("shipping",),
-        "دایرکت": (
-            "دایرکت",
-            "دايرکت",
-            "دايركت",
-        ),
+        "دایرکت": ("دایرکت",),
         "واتساپ": ("واتساپ",),
         "whatsapp": ("whatsapp",),
         "تومان": ("تومان",),
@@ -134,12 +125,33 @@ class ShopClassifier:
         ),
     }
 
+    # Signals allowed to match as prefixes without requiring right-side word boundaries
+    # (handles attached Persian bio patterns like "ثبت سفارشسايت", "سفارشسايت" or "دايركتوحضوري")
+    _PREFIX_MATCH_SIGNALS: frozenset[str] = frozenset(
+        {
+            "ثبت سفارش",
+            "سفارش",
+            "دایرکت",
+        }
+    )
+
+    # Dominance mapping to suppress sub-keyword double counting
+    # (e.g., "فروشگاه" suppresses "فروش", "ثبت سفارش" suppresses "سفارش")
+    _DOMINANT_SIGNALS: dict[
+        str,
+        tuple[str, ...],
+    ] = {
+        "فروشگاه": ("فروش",),
+        "ثبت سفارش": ("سفارش",),
+    }
+
     # Direct intent keywords indicating commercial activity
-    _COMMERCIAL_SIGNALS = frozenset(
+    _COMMERCIAL_SIGNALS: frozenset[str] = frozenset(
         {
             "فروشگاه",
             "فروش",
             "شاپ",
+            "ثبت سفارش",
             "سفارش",
             "خرید",
             "shop",
@@ -149,7 +161,7 @@ class ShopClassifier:
     )
 
     # Keywords associated with shipping and delivery logistics
-    _FULFILLMENT_SIGNALS = frozenset(
+    _FULFILLMENT_SIGNALS: frozenset[str] = frozenset(
         {
             "ارسال",
             "shipping",
@@ -157,7 +169,7 @@ class ShopClassifier:
     )
 
     # Keywords associated with pricing, currency, or inventory
-    _TRANSACTION_SIGNALS = frozenset(
+    _TRANSACTION_SIGNALS: frozenset[str] = frozenset(
         {
             "قیمت",
             "موجودی",
@@ -165,16 +177,16 @@ class ShopClassifier:
         }
     )
 
-    # Multiplier applied to signals found in display name rather than bio
+    # Weight discount factor for signals matched in display name instead of bio
     _DISPLAY_NAME_WEIGHT_FACTOR = 0.5
 
-    # Bonus applied when a commercial profile features external website links
+    # Bonus applied when commercial profiles contain external website links
     _EXTERNAL_LINK_BONUS = 0.20
 
     # Bonus applied when commercial intent appears in both display name and bio
     _NAME_COMMERCIAL_SYNERGY_BONUS = 0.15
 
-    # Additional bonus when display name contains multiple commercial signals along with an external link
+    # Additional bonus when display name features multiple commercial keywords with external link
     _MULTIPLE_NAME_COMMERCIAL_BONUS = 0.15
 
     def classify(
@@ -184,10 +196,10 @@ class ShopClassifier:
         """Evaluates an Instagram profile and classifies whether it operates as an e-commerce shop.
 
         Args:
-            profile: Target InstagramProfile instance containing metadata fields.
+            profile: Target InstagramProfile instance containing bio and display name fields.
 
         Returns:
-            A ShopClassificationResult with the verdict, confidence score, and matched signals.
+            A ShopClassificationResult containing the verdict, confidence score, and matched signals.
         """
         bio_text = self._normalize_text(profile.bio)
 
@@ -220,17 +232,35 @@ class ShopClassifier:
     def _normalize_text(
         value: str | None,
     ) -> str:
-        """Standardizes text strings by lowercasing and replacing Arabic character variants."""
+        """Standardizes text by stripping whitespace, lowercasing, and replacing Persian character variants."""
         if not value:
             return ""
 
-        return value.strip().lower().replace("ي", "ی").replace("ك", "ک")
+        normalized = (
+            value.strip()
+            .lower()
+            .replace("ي", "ی")
+            .replace("ى", "ی")
+            .replace("ك", "ک")
+            .replace("\u200c", " ")  # Replace half-spaces with standard spaces
+            .replace("\u200f", "")  # Strip RTL mark
+            .replace("\u200e", "")  # Strip LTR mark
+        )
+
+        # Collapse redundant whitespace gaps into single spaces
+        normalized = re.sub(
+            r"\s+",
+            " ",
+            normalized,
+        )
+
+        return normalized.strip()
 
     def _find_matches(
         self,
         text: str,
     ) -> tuple[str, ...]:
-        """Scans input text for any recognized signal alias matches.
+        """Scans input text for recognized signal alias matches and strips shadowed sub-signals.
 
         Args:
             text: Normalized target text to search.
@@ -244,30 +274,44 @@ class ShopClassifier:
         matches: list[str] = []
 
         for canonical, aliases in self._SIGNAL_ALIASES.items():
+            prefix_match = canonical in self._PREFIX_MATCH_SIGNALS
+
             if any(
                 self._signal_exists(
                     text=text,
                     signal=alias,
+                    allow_attached_suffix=prefix_match,
                 )
                 for alias in aliases
             ):
                 matches.append(canonical)
 
-        return tuple(matches)
+        return self._remove_shadowed_signals(tuple(matches))
 
     @staticmethod
     def _signal_exists(
         *,
         text: str,
         signal: str,
+        allow_attached_suffix: bool,
     ) -> bool:
-        """Performs regex word boundary matching for a specific signal against text."""
-        normalized_signal = signal.lower().replace("ي", "ی").replace("ك", "ک")
+        """Performs regex matching for a specific signal against text with optional suffix allowance."""
+        normalized_signal = (
+            signal.lower()
+            .replace("ي", "ی")
+            .replace("ى", "ی")
+            .replace("ك", "ک")
+            .replace("\u200c", " ")
+        )
 
         escaped = re.escape(normalized_signal)
 
-        # Negative lookbehind/lookahead to prevent partial word matching
-        pattern = rf"(?<!\w)" rf"{escaped}" rf"(?!\w)"
+        if allow_attached_suffix:
+            # Enforce left boundary only to support compound terms ("ثبت سفارشسايت", "دايركتوحضوري")
+            pattern = rf"(?<!\w)" rf"{escaped}"
+        else:
+            # Enforce full word boundaries on both sides
+            pattern = rf"(?<!\w)" rf"{escaped}" rf"(?!\w)"
 
         return (
             re.search(
@@ -278,12 +322,34 @@ class ShopClassifier:
             is not None
         )
 
+    def _remove_shadowed_signals(
+        self,
+        signals: tuple[str, ...],
+    ) -> tuple[str, ...]:
+        """Filters out sub-signals that are subsumed by broader dominant signals.
+
+        For example, removes 'فروش' when 'فروشگاه' is present, or 'سفارش' when 'ثبت سفارش' is present.
+        """
+        signal_set = set(signals)
+
+        shadowed: set[str] = set()
+
+        for dominant, children in self._DOMINANT_SIGNALS.items():
+            if dominant not in signal_set:
+                continue
+
+            for child in children:
+                if child in signal_set:
+                    shadowed.add(child)
+
+        return tuple(signal for signal in signals if signal not in shadowed)
+
     @staticmethod
     def _combine_signals(
         first: tuple[str, ...],
         second: tuple[str, ...],
     ) -> tuple[str, ...]:
-        """Merges two signal tuples while preserving insertion order and deduplicating items."""
+        """Merges two signal tuples while preserving insertion order and removing duplicates."""
         combined: list[str] = []
 
         for signal in (
@@ -302,21 +368,21 @@ class ShopClassifier:
         bio_signals: tuple[str, ...],
         display_name_signals: tuple[str, ...],
     ) -> float:
-        """Calculates total shop confidence score including base weights and synergy bonuses."""
+        """Calculates total shop confidence score incorporating base signal weights and contextual bonuses."""
         score = 0.0
 
-        # Primary bio signal scores
+        # Accumulate primary bio signal weights
         for signal in bio_signals:
             score += self._SIGNAL_WEIGHTS[signal]
 
-        # Secondary display name signal scores (discounted if already present in bio)
+        # Accumulate discounted display name weights (skipped if signal was already matched in bio)
         for signal in display_name_signals:
             if signal in bio_signals:
                 continue
 
             score += self._SIGNAL_WEIGHTS[signal] * self._DISPLAY_NAME_WEIGHT_FACTOR
 
-        # Apply multi-signal combinations and profile context bonuses
+        # Apply multi-signal combination and profile context bonuses
         score += self._calculate_bio_combo_bonus(bio_signals)
 
         score += self._calculate_profile_context_bonus(
@@ -337,7 +403,7 @@ class ShopClassifier:
         self,
         bio_signals: tuple[str, ...],
     ) -> float:
-        """Calculates synergy bonuses when complementary signal types co-occur in the bio."""
+        """Calculates synergy bonuses when complementary signal types co-occur within the profile bio."""
         matched = set(bio_signals)
 
         bonus = 0.0
@@ -348,15 +414,15 @@ class ShopClassifier:
 
         has_transaction = bool(matched & self._TRANSACTION_SIGNALS)
 
-        # Commercial intent + logistics evidence
+        # Bonus for combining commercial intent with fulfillment/shipping info
         if has_commercial and has_fulfillment:
             bonus += 0.15
 
-        # Commercial intent + transaction/pricing details
+        # Bonus for combining commercial intent with transaction/pricing details
         if has_commercial and has_transaction:
             bonus += 0.10
 
-        # Multiple strong commercial intent keywords in bio
+        # Bonus for matching two or more distinct commercial keywords
         if len(matched & self._COMMERCIAL_SIGNALS) >= 2:
             bonus += 0.10
 
@@ -369,7 +435,7 @@ class ShopClassifier:
         bio_signals: tuple[str, ...],
         display_name_signals: tuple[str, ...],
     ) -> float:
-        """Calculates bonuses based on cross-field synergies and profile features like external links."""
+        """Calculates bonuses based on cross-field synergies and profile features like external website links."""
         bonus = 0.0
 
         bio_set = set(bio_signals)
@@ -390,15 +456,15 @@ class ShopClassifier:
             bio_commercial_signals or display_commercial_signals
         )
 
-        # Commercial display name paired with bio evidence
+        # Synergy bonus when display name contains commercial intent and bio provides supporting evidence
         if has_name_commercial and has_bio_evidence:
             bonus += self._NAME_COMMERCIAL_SYNERGY_BONUS
 
-        # External URL paired with commercial keywords
+        # Bonus when external URL presence coincides with commercial keywords
         if has_external_link and has_any_commercial_evidence:
             bonus += self._EXTERNAL_LINK_BONUS
 
-        # External URL paired with multiple commercial signals in display name
+        # Additional bonus when external URL presence coincides with multiple commercial signals in display name
         if has_external_link and len(display_commercial_signals) >= 2:
             bonus += self._MULTIPLE_NAME_COMMERCIAL_BONUS
 
@@ -408,7 +474,7 @@ class ShopClassifier:
     def _resolve_verdict(
         score: float,
     ) -> ShopVerdict:
-        """Maps final numerical score to a categorical ShopVerdict enum value."""
+        """Maps final numerical confidence score to a categorical ShopVerdict enum value."""
         if score >= 0.6:
             return ShopVerdict.SHOP
 

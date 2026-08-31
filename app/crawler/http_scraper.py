@@ -97,28 +97,6 @@ class InstagramHttpProfileFetcher(ProfileFetcher):
         )
 
     @staticmethod
-    def _normalize_username(
-        username: str,
-    ) -> str:
-        """Sanitizes username inputs by trimming whitespace and removing leading '@' symbols.
-
-        Args:
-            username: The raw username string to normalize.
-
-        Returns:
-            A sanitized lowercase username string.
-
-        Raises:
-            ValueError: If the sanitized result is empty.
-        """
-        normalized = username.strip().lstrip("@").lower()
-
-        if not normalized:
-            raise ValueError("Username cannot be empty.")
-
-        return normalized
-
-    @staticmethod
     def _raise_for_status(*, response: httpx.Response, username: str) -> None:
         """Validates response status codes and raises domain-specific exceptions.
 

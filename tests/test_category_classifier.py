@@ -103,3 +103,26 @@ def test_imajazi_shop_is_not_accessories() -> None:
     )
 
     assert result.category == ProfileCategory.UNKNOWN
+
+
+def test_shortologist_is_clothing() -> None:
+    result = CategoryClassifier().classify(
+        make_profile(
+            display_name=("شورتولوژیست|شورت|جوراب"),
+        )
+    )
+
+    assert result.category == ProfileCategory.CLOTHING
+
+    assert "شورت" in result.matched_signals
+
+
+def test_jjpoosh_underwear_is_clothing() -> None:
+    result = CategoryClassifier().classify(
+        make_profile(
+            display_name=("شورتولوژیست|شورت|جوراب"),
+            bio=("ثبت سفارشسايت و " "دايركتوحضوري"),
+        )
+    )
+
+    assert result.category == ProfileCategory.CLOTHING

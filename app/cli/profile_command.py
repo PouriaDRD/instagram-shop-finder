@@ -6,11 +6,12 @@ from app.classifiers.shop_classifier import (
     ShopVerdict,
 )
 from app.config import PROFILES_FILE
-from app.crawler.exceptions import (
-    ProfileFetchError,
+from app.crawler.crawl_session import (
+    InstagramCrawlSession,
 )
-from app.crawler.playwright_scraper import (
-    InstagramPlaywrightProfileFetcher,
+from app.crawler.exceptions import (
+    CrawlSessionStoppedError,
+    ProfileFetchError,
 )
 from app.mappers.profile_mapper import (
     ProfileMapper,
@@ -31,8 +32,6 @@ def run_profile_command() -> None:
         print("Username cannot be empty.")
         return
 
-    fetcher = InstagramPlaywrightProfileFetcher()
-
     shop_classifier = ShopClassifier()
 
     category_classifier = CategoryClassifier()
@@ -40,7 +39,15 @@ def run_profile_command() -> None:
     storage = JsonProfileStorage(PROFILES_FILE)
 
     try:
-        raw_profile = fetcher.fetch(username)
+        with InstagramCrawlSession() as session:
+            raw_profile = session.fetch(username)
+
+    except CrawlSessionStoppedError as exc:
+        print()
+        print("Crawl session stopped")
+        print("---------------------")
+        print(exc)
+        return
 
     except ProfileFetchError as exc:
         print()
@@ -129,6 +136,8 @@ def print_profile_details(
     print()
     print("Shop classification")
     print("-------------------")
+
+    print(f"Is shop: " f"{profile.is_shop}")
 
     print(f"Verdict: " f"{shop_verdict}")
 

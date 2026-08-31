@@ -42,7 +42,7 @@ def link_in_bio(
 ) -> ExternalLink:
     return ExternalLink(
         url=HttpUrl(url),
-        type=ExternalLinkType.LINK_IN_BIO,
+        type=(ExternalLinkType.LINK_IN_BIO),
     )
 
 
@@ -60,6 +60,7 @@ def test_sales_and_shipping_are_shop() -> None:
     )
 
     assert result.score == 0.65
+
     assert result.verdict == ShopVerdict.SHOP
 
 
@@ -81,6 +82,7 @@ def test_products_plural_is_detected() -> None:
     )
 
     assert "محصول" in result.matched_signals
+
     assert result.score == 0.16
 
 
@@ -105,6 +107,7 @@ def test_link_alone_does_not_make_creator_a_shop() -> None:
     )
 
     assert result.score == 0.0
+
     assert result.verdict == ShopVerdict.NOT_SHOP
 
 
@@ -126,7 +129,7 @@ def test_lebaszirnikoo_is_shop() -> None:
 def test_baneh_bosch_is_shop() -> None:
     result = ShopClassifier().classify(
         make_profile(
-            display_name=("فروشگاه لوازم خانگی | بانه بوش"),
+            display_name=("فروشگاه لوازم خانگی | " "بانه بوش"),
             bio=("تضمین اصالت کالا " "ارسال به سراسر کشور"),
             external_links=(link_in_bio("https://zil.ink/baneh.bosch"),),
         )
@@ -139,7 +142,7 @@ def test_ali_karimi_is_not_shop() -> None:
     result = ShopClassifier().classify(
         make_profile(
             display_name="Ali Karimi",
-            bio="HumanRights ايران اگاهی آزادی",
+            bio=("HumanRights ايران " "اگاهی آزادی"),
         )
     )
 
@@ -150,7 +153,7 @@ def test_imajazishop_is_shop() -> None:
     result = ShopClassifier().classify(
         make_profile(
             display_name=("مجازی شاپ | " "خرید مطمئن استارز تلگرام"),
-            bio=("استارز تلگرام و تلگرام پریمیوم " "با پشتیبانی ۲۴ ساعته"),
+            bio=("استارز تلگرام و " "تلگرام پریمیوم " "با پشتیبانی ۲۴ ساعته"),
             external_links=(website("https://majazi.shop/"),),
         )
     )
@@ -195,3 +198,79 @@ def test_matching_is_case_insensitive() -> None:
     result = ShopClassifier().classify(make_profile(bio="SHOP ORDER SHIPPING"))
 
     assert result.verdict == ShopVerdict.SHOP
+
+
+def test_attached_persian_order_is_detected() -> None:
+    result = ShopClassifier().classify(make_profile(bio=("سفارشسايت و پشتیبانی")))
+
+    assert "سفارش" in result.matched_signals
+
+
+def test_attached_persian_direct_is_detected() -> None:
+    result = ShopClassifier().classify(make_profile(bio=("سفارش و دايركتوحضوري")))
+
+    assert "دایرکت" in result.matched_signals
+
+
+def test_registered_order_is_stronger_than_generic_order() -> None:
+    classifier = ShopClassifier()
+
+    generic = classifier.classify(make_profile(bio="سفارش"))
+
+    registered = classifier.classify(make_profile(bio="ثبت سفارش"))
+
+    assert registered.score > generic.score
+
+    assert "ثبت سفارش" in registered.matched_signals
+
+
+def test_registered_order_does_not_double_count_order() -> None:
+    result = ShopClassifier().classify(make_profile(bio="ثبت سفارش"))
+
+    assert "ثبت سفارش" in result.matched_signals
+
+    assert "سفارش" not in result.matched_signals
+
+    assert result.score == 0.40
+
+
+def test_attached_registered_order_is_detected() -> None:
+    result = ShopClassifier().classify(make_profile(bio="ثبت سفارشسايت"))
+
+    assert "ثبت سفارش" in result.matched_signals
+
+    assert "سفارش" not in result.matched_signals
+
+
+def test_persian_store_does_not_double_count_sales() -> None:
+    result = ShopClassifier().classify(make_profile(display_name="فروشگاه پوشاک"))
+
+    assert "فروشگاه" in result.matched_signals
+
+    assert "فروش" not in result.matched_signals
+
+
+def test_jjpoosh_underwear_is_shop() -> None:
+    result = ShopClassifier().classify(
+        make_profile(
+            username="jjpoosh_underwear",
+            display_name=("شورتولوژیست|شورت|جوراب🩲💉"),
+            bio=(
+                "🟡شورتولوژيست💉🩲 "
+                "ثبت سفارشسايت و "
+                "دايركتوحضوري "
+                "پیج كراكس @jjpoosh"
+            ),
+            external_links=(website("https://www.jjpoosh.com/"),),
+        )
+    )
+
+    assert result.verdict == ShopVerdict.SHOP
+
+    assert result.score == 0.68
+
+    assert "ثبت سفارش" in result.matched_signals
+
+    assert "سفارش" not in result.matched_signals
+
+    assert "دایرکت" in result.matched_signals
