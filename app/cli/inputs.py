@@ -1,33 +1,45 @@
+"""CLI input parsing and validation utilities for Instagram profile management."""
+
 from app.models.profile import ProfileCategory
 
 
 def parse_compact_number(value: str) -> int:
-    """Parses a compact string representation of a number (e.g., '10k', '1.5M', '50_000') into an integer.
-
-    Supports suffix multipliers:
-        - 'k' or 'K': 1,000
-        - 'm' or 'M': 1,000,000
-        - 'b' or 'B': 1,000,000,000
+    """Parses compact string representations of numbers (e.g., '10k', '1.5m') into integers.
 
     Args:
-        value: The string representation of a number.
+        value: Raw input string containing digits and optional compact multipliers ('k', 'm', 'b').
 
     Returns:
-        The evaluated whole integer value.
+        Extracted whole integer value.
 
     Raises:
-        ValueError: If the string is empty, improperly formatted, contains
-            a negative value, or resolves to a fractional float.
+        ValueError: If value is empty, missing a numeric prefix, invalid, negative,
+            or resolves to a non-whole number.
     """
-    # Clean and normalize input delimiters
     normalized = (
-        value.strip().lower().replace(",", "").replace("_", "").replace(" ", "")
+        value.strip()
+        .lower()
+        .replace(
+            ",",
+            "",
+        )
+        .replace(
+            "_",
+            "",
+        )
+        .replace(
+            " ",
+            "",
+        )
     )
 
     if not normalized:
         raise ValueError("Value cannot be empty.")
 
-    multipliers: dict[str, int] = {
+    multipliers: dict[
+        str,
+        int,
+    ] = {
         "k": 1_000,
         "m": 1_000_000,
         "b": 1_000_000_000,
@@ -35,7 +47,7 @@ def parse_compact_number(value: str) -> int:
 
     suffix = normalized[-1]
 
-    # Handle suffix-based multiplier scaling (e.g., 1.5k -> 1500.0)
+    # Evaluate compact suffix multiplier if present
     if suffix in multipliers:
         number_part = normalized[:-1]
 
@@ -51,39 +63,63 @@ def parse_compact_number(value: str) -> int:
         result = number * multipliers[suffix]
 
     else:
-        # Standard numeric parsing without suffix
         try:
             result = float(normalized)
 
         except ValueError as exc:
             raise ValueError(f"Invalid number: {value}") from exc
 
-    # Domain constraints validation
     if result < 0:
         raise ValueError("Value cannot be negative.")
 
     if not result.is_integer():
-        raise ValueError("Final value must resolve " "to a whole number.")
+        raise ValueError("Final value must resolve to a whole number.")
 
     return int(result)
 
 
-def read_optional_follower_count(prompt: str) -> int | None:
-    """Prompts the user via CLI to input an optional follower count string.
-
-    Loops continuously until a valid compact number is entered or the user
-    submits an empty response.
+def read_positive_int(prompt: str, *, default: int | None = None) -> int:
+    """Prompts CLI user for a positive whole integer with optional default fallback.
 
     Args:
-        prompt: The text message displayed to the user in CLI.
+        prompt: User display message.
+        default: Fallback integer returned when input is empty.
 
     Returns:
-        An integer representing parsed follower count, or None if skipped.
+        Validated positive integer.
     """
     while True:
         value = input(prompt).strip()
 
-        # Skip filter on empty input
+        if not value and default is not None:
+            return default
+
+        try:
+            parsed = int(value)
+
+        except ValueError:
+            print("Please enter a positive whole number.")
+            continue
+
+        if parsed <= 0:
+            print("Value must be greater than zero.")
+            continue
+
+        return parsed
+
+
+def read_optional_follower_count(prompt: str) -> int | None:
+    """Prompts CLI user for an optional follower count, allowing compact notation.
+
+    Args:
+        prompt: User display message.
+
+    Returns:
+        Parsed integer follower count, or None if skipped.
+    """
+    while True:
+        value = input(prompt).strip()
+
         if not value:
             return None
 
@@ -92,8 +128,7 @@ def read_optional_follower_count(prompt: str) -> int | None:
 
         except ValueError:
             print("Invalid follower count.")
-
-            print("Examples: " "10000, 10k, 1.5k, " "468k, 1m, 2.5m")
+            print("Examples: 10000, 10k, 1.5k, 468k, 1m, 2.5m")
 
 
 def read_optional_float(
@@ -102,23 +137,19 @@ def read_optional_float(
     min_value: float = 0.0,
     max_value: float = 1.0,
 ) -> float | None:
-    """Prompts the user via CLI to enter an optional floating-point value within a range.
-
-    Loops continuously until a valid float within [min_value, max_value] is entered
-    or the input is left empty.
+    """Prompts CLI user for an optional float constrained within a specific numeric range.
 
     Args:
-        prompt: The text message displayed to the user in CLI.
-        min_value: The lower bound threshold (inclusive). Defaults to 0.0.
-        max_value: The upper bound threshold (inclusive). Defaults to 1.0.
+        prompt: User display message.
+        min_value: Minimum allowable float bound.
+        max_value: Maximum allowable float bound.
 
     Returns:
-        The validated float value, or None if skipped.
+        Validated float value, or None if skipped.
     """
     while True:
         value = input(prompt).strip()
 
-        # Skip filter on empty input
         if not value:
             return None
 
@@ -129,31 +160,26 @@ def read_optional_float(
             print("Please enter a valid number.")
             continue
 
-        # Enforce range boundaries
         if parsed < min_value or parsed > max_value:
-            print(f"Value must be between " f"{min_value} and " f"{max_value}.")
+            print(f"Value must be between {min_value} and {max_value}.")
             continue
 
         return parsed
 
 
 def read_optional_bool(prompt: str) -> bool | None:
-    """Prompts the user via CLI to enter an optional boolean choice.
-
-    Loops continuously until a recognized affirmation, negation, or wildcard/skip input is given.
+    """Prompts CLI user for an optional boolean input supporting common string representations.
 
     Args:
-        prompt: The text message displayed to the user in CLI.
+        prompt: User display message.
 
     Returns:
-        True for affirmative inputs ('y', 'yes', 'true', '1'),
-        False for negative inputs ('n', 'no', 'false', '0'),
-        or None for skip inputs ('', 'all', 'any', '*').
+        True/False for affirmative/negative answers, or None for wildcards/empty inputs.
     """
     while True:
         value = input(prompt).strip().lower()
 
-        # Skip/wildcard inputs map to None
+        # Wildcards or empty string resolve to None (filter bypassed)
         if value in {
             "",
             "all",
@@ -162,7 +188,6 @@ def read_optional_bool(prompt: str) -> bool | None:
         }:
             return None
 
-        # Affirmative truths
         if value in {
             "y",
             "yes",
@@ -171,7 +196,6 @@ def read_optional_bool(prompt: str) -> bool | None:
         }:
             return True
 
-        # Negation truths
         if value in {
             "n",
             "no",
@@ -180,40 +204,39 @@ def read_optional_bool(prompt: str) -> bool | None:
         }:
             return False
 
-        print("Please enter y, n, all, " "or leave empty.")
+        print("Please enter y, n, all, or leave empty.")
 
 
 def read_optional_category() -> ProfileCategory | None:
-    """Displays an indexed selection menu of available ProfileCategory options in CLI.
-
-    Loops continuously until a valid numeric index corresponding to a category is selected,
-    or a wildcard/empty response is provided. Excludes `ProfileCategory.UNKNOWN`.
+    """Displays indexed list of available ProfileCategory options and prompts CLI user selection.
 
     Returns:
-        The selected ProfileCategory enum instance, or None if skipped.
+        Selected ProfileCategory enum member, or None if skipped/all selected.
     """
     print()
     print("Available categories")
     print("--------------------")
 
-    # Filter out UNKNOWN category from user selection
+    # Filter out UNKNOWN category from user selection menu
     categories = [
         category for category in ProfileCategory if category != ProfileCategory.UNKNOWN
     ]
 
-    for index, category in enumerate(
+    for (
+        index,
+        category,
+    ) in enumerate(
         categories,
         start=1,
     ):
-        print(f"{index}. " f"{category.value}")
+        print(f"{index}. {category.value}")
 
     print()
-    print("Leave empty or enter 'all' " "to include all categories.")
+    print("Leave empty or enter 'all' to include all categories.")
 
     while True:
         value = input("Category number: ").strip().lower()
 
-        # Wildcard selection maps to None
         if value in {
             "",
             "all",
@@ -226,12 +249,11 @@ def read_optional_category() -> ProfileCategory | None:
             index = int(value)
 
         except ValueError:
-            print("Please enter a valid " "category number or 'all'.")
+            print("Please enter a valid category number or 'all'.")
             continue
 
-        # Check bounds for 1-based index selection
         if index < 1 or index > len(categories):
-            print("Category number is " "out of range.")
+            print("Category number is out of range.")
             continue
 
         return categories[index - 1]
