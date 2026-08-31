@@ -1,9 +1,13 @@
 import re
 import unicodedata
 from typing import Final
-from urllib.parse import parse_qs, unquote, urlparse
-
 from pydantic import HttpUrl
+from urllib.parse import (
+    parse_qs,
+    unquote,
+    urlparse,
+)
+
 from playwright.sync_api import (
     Browser,
     BrowserContext,
@@ -24,11 +28,13 @@ from app.models.external_link import (
     ExternalLink,
     ExternalLinkType,
 )
-from app.models.raw_profile import RawProfileData
+from app.models.raw_profile import (
+    RawProfileData,
+)
 
 
 class InstagramPlaywrightProfileFetcher(ProfileFetcher):
-    """Playwright-based fetcher that launches a headless Chromium browser instance to scrape public Instagram profile metadata."""
+    """Playwright-based fetcher that launches a headless Chromium instance to scrape public Instagram profiles."""
 
     _BASE_URL: Final[str] = "https://www.instagram.com"
 
@@ -36,7 +42,29 @@ class InstagramPlaywrightProfileFetcher(ProfileFetcher):
     _RENDER_TIMEOUT_MS: Final[int] = 15_000
     _BODY_TIMEOUT_MS: Final[int] = 8_000
 
-    # UI noise and button label lines inside profile header to ignore when extracting bio
+    # Pattern for identifying visible, unhyperlinked domain names in raw text
+    _VISIBLE_DOMAIN_PATTERN: Final[re.Pattern[str]] = re.compile(
+        r"(?<![\w@.-])"
+        r"(?P<domain>"
+        r"(?:www\.)?"
+        r"(?:"
+        r"[a-zA-Z0-9]"
+        r"(?:[a-zA-Z0-9-]*[a-zA-Z0-9])?"
+        r"\."
+        r")+"
+        r"[a-zA-Z]{2,}"
+        r"(?:/[^\s]*)?"
+        r")",
+        flags=re.IGNORECASE,
+    )
+
+    # Pattern to match pagination markers or truncated list indicators
+    _AND_MORE_PATTERN: Final[re.Pattern[str]] = re.compile(
+        r"\band\s+\d+\s+more\b",
+        flags=re.IGNORECASE,
+    )
+
+    # Standard UI interaction text labels to ignore when extracting bio text
     _IGNORED_HEADER_LINES: Final[frozenset[str]] = frozenset(
         {
             "follow",
@@ -54,19 +82,19 @@ class InstagramPlaywrightProfileFetcher(ProfileFetcher):
         self,
         username: str,
     ) -> RawProfileData:
-        """Launches a browser session to fetch public Instagram profile data.
+        """Launches a browser session to fetch public Instagram profile metadata.
 
         Args:
             username: Target Instagram handle (with or without leading '@').
 
         Returns:
-            A RawProfileData instance containing extracted profile metadata.
+            A RawProfileData instance containing extracted profile details.
 
         Raises:
             ValueError: If the normalized username is empty.
-            ProfileNotFoundError: If Instagram returns a 404 status code.
+            ProfileNotFoundError: If Instagram returns an HTTP 404 status code.
             RateLimitError: If Instagram limits requests with HTTP 429.
-            ProfileFetchError: On page timeouts, access blocks, or unexpected browser errors.
+            ProfileFetchError: On page timeouts, access restrictions, or unexpected errors.
         """
         normalized_username = self._normalize_username(username)
 
@@ -97,15 +125,15 @@ class InstagramPlaywrightProfileFetcher(ProfileFetcher):
         username: str,
         url: str,
     ) -> RawProfileData:
-        """Manages browser, context, and page lifecycles during scraping execution.
+        """Manages browser instance and context lifecycles during scraping execution.
 
         Args:
-            playwright: Active Playwright sync context.
-            username: Normalized profile handle.
-            url: Fully qualified target URL.
+            playwright: Active Playwright sync runner.
+            username: Normalized target profile handle.
+            url: Fully qualified Instagram profile target URL.
 
         Returns:
-            Extracted RawProfileData model.
+            Extracted RawProfileData model instance.
         """
         browser = self._launch_browser(playwright)
 
@@ -140,7 +168,7 @@ class InstagramPlaywrightProfileFetcher(ProfileFetcher):
     def _create_context(
         browser: Browser,
     ) -> BrowserContext:
-        """Configures an isolated browser context with fixed viewport and English locale."""
+        """Configures an isolated browser context with fixed desktop viewport and English locale."""
         return browser.new_context(
             locale="en-US",
             viewport={
@@ -156,20 +184,20 @@ class InstagramPlaywrightProfileFetcher(ProfileFetcher):
         username: str,
         url: str,
     ) -> RawProfileData:
-        """Navigates to profile URL, checks response status codes, waits for DOM rendering, and extracts metadata.
+        """Navigates to profile URL, checks response status, waits for rendering, and parses metadata.
 
         Args:
-            page: Browser tab Page instance.
-            username: Target profile username.
-            url: Instagram profile URL.
+            page: Active Browser Page object.
+            username: Target handle.
+            url: Target URL string.
 
         Returns:
             Populated RawProfileData object.
 
         Raises:
-            ProfileNotFoundError: On HTTP 404.
-            RateLimitError: On HTTP 429.
-            ProfileFetchError: On access blocks, login walls, or missing profile data.
+            ProfileNotFoundError: On HTTP 404 status.
+            RateLimitError: On HTTP 429 status.
+            ProfileFetchError: On access restrictions, challenge walls, or missing profile data.
         """
         response = self._navigate(
             page=page,
@@ -200,9 +228,7 @@ class InstagramPlaywrightProfileFetcher(ProfileFetcher):
         )
 
         if not title:
-            document_title = page.title().strip()
-
-            title = document_title or None
+            title = page.title().strip() or None
 
         header_text = self._read_profile_header_text(page)
 
@@ -213,7 +239,7 @@ class InstagramPlaywrightProfileFetcher(ProfileFetcher):
 
         display_name = self._parse_display_name(title) if title else None
 
-        # Source string for parsing followers, following, and posts counts
+        # Use available text sources to extract public follower/following/post counts
         stats_source = description or header_text or body_text
 
         followers_count = self._extract_count(
@@ -231,7 +257,11 @@ class InstagramPlaywrightProfileFetcher(ProfileFetcher):
             label="posts",
         )
 
-        external_links = self._extract_external_links(page)
+        external_links = self._extract_external_links(
+            page=page,
+            header_text=header_text,
+            username=username,
+        )
 
         bio = self._extract_bio(
             username=username,
@@ -259,19 +289,7 @@ class InstagramPlaywrightProfileFetcher(ProfileFetcher):
         url: str,
         username: str,
     ) -> Response | None:
-        """Navigates to URL using 'commit' event to avoid hanging on background network connections.
-
-        Args:
-            page: Active Page object.
-            url: Instagram profile URL.
-            username: Target username handle.
-
-        Returns:
-            The initial HTTP Response object, or None if navigation timed out after document commit.
-
-        Raises:
-            ProfileFetchError: If navigation fails completely before reaching Instagram.
-        """
+        """Navigates to URL using 'commit' wait strategy to prevent hanging on background requests."""
         try:
             return page.goto(
                 url,
@@ -280,11 +298,10 @@ class InstagramPlaywrightProfileFetcher(ProfileFetcher):
             )
 
         except PlaywrightTimeoutError:
-            # Check if document commit succeeded despite background request timeouts
             if page.url.startswith(self._BASE_URL):
                 return None
 
-            raise ProfileFetchError(f"Instagram page timed out for '@{username}'.")
+            raise ProfileFetchError("Instagram page timed out for " f"'@{username}'.")
 
     @staticmethod
     def _raise_for_status(
@@ -292,17 +309,7 @@ class InstagramPlaywrightProfileFetcher(ProfileFetcher):
         status: int,
         username: str,
     ) -> None:
-        """Validates response status codes and raises domain-specific exceptions.
-
-        Args:
-            status: HTTP status integer.
-            username: Target profile username handle.
-
-        Raises:
-            ProfileNotFoundError: On 404 status.
-            RateLimitError: On 429 status.
-            ProfileFetchError: On 401, 403, or general 4xx/5xx status codes.
-        """
+        """Validates HTTP response status code and raises corresponding exceptions."""
         if status == 404:
             raise ProfileNotFoundError(
                 f"Instagram profile '@{username}' was not found."
@@ -311,9 +318,12 @@ class InstagramPlaywrightProfileFetcher(ProfileFetcher):
         if status == 429:
             raise RateLimitError("Instagram returned HTTP 429 Too Many Requests.")
 
-        if status in {401, 403}:
+        if status in {
+            401,
+            403,
+        }:
             raise ProfileFetchError(
-                f"Instagram blocked the request with HTTP {status}."
+                "Instagram blocked the request " f"with HTTP {status}."
             )
 
         if status >= 400:
@@ -323,14 +333,13 @@ class InstagramPlaywrightProfileFetcher(ProfileFetcher):
         self,
         page: Page,
     ) -> None:
-        """Waits for profile header DOM elements or fallback OpenGraph meta tags to render."""
+        """Waits for primary profile header DOM elements or OpenGraph meta tags to render."""
         try:
             page.wait_for_selector(
                 "header",
                 state="attached",
                 timeout=self._RENDER_TIMEOUT_MS,
             )
-
             return
 
         except PlaywrightTimeoutError:
@@ -349,7 +358,7 @@ class InstagramPlaywrightProfileFetcher(ProfileFetcher):
         self,
         page: Page,
     ) -> str:
-        """Extracts visible inner text of the document body element."""
+        """Extracts visible inner text of the body element."""
         try:
             return page.locator("body").inner_text(timeout=self._BODY_TIMEOUT_MS)
 
@@ -360,7 +369,7 @@ class InstagramPlaywrightProfileFetcher(ProfileFetcher):
     def _read_profile_header_text(
         page: Page,
     ) -> str:
-        """Extracts inner text from the primary profile header element."""
+        """Extracts inner text from the primary profile header container."""
         header = page.locator("header").first
 
         if header.count() == 0:
@@ -376,14 +385,7 @@ class InstagramPlaywrightProfileFetcher(ProfileFetcher):
     def _detect_blocked_page(
         body_text: str,
     ) -> None:
-        """Scans body text for challenge markers or access restrictions.
-
-        Args:
-            body_text: Raw inner text of the document body.
-
-        Raises:
-            ProfileFetchError: If access blocks or login challenges are detected.
-        """
+        """Scans body text for known bot challenge markers or restricted-access messages."""
         normalized = body_text.lower()
 
         blocked_markers = (
@@ -404,7 +406,7 @@ class InstagramPlaywrightProfileFetcher(ProfileFetcher):
         page: Page,
         property_name: str,
     ) -> str | None:
-        """Reads content attribute value of a specific meta tag."""
+        """Reads content attribute value of a specific HTML meta element."""
         locator = page.locator(f'meta[property="{property_name}"]')
 
         if locator.count() == 0:
@@ -415,26 +417,22 @@ class InstagramPlaywrightProfileFetcher(ProfileFetcher):
         if not content:
             return None
 
-        stripped = content.strip()
-
-        return stripped or None
+        return content.strip() or None
 
     @classmethod
     def _parse_display_name(
         cls,
         title: str,
     ) -> str | None:
-        """Strips Instagram branding suffixes and invisible formatting characters from page title."""
+        """Strips standard Instagram branding suffixes and formatting from page title strings."""
         cleaned = re.sub(
             (r"\s*\(@[^)]+\)" r"\s*[•\-]\s*Instagram.*$"),
             "",
             title,
             flags=re.IGNORECASE,
-        ).strip()
+        )
 
-        cleaned = cls._clean_unicode_text(cleaned)
-
-        return cleaned or None
+        return cls._clean_unicode_text(cleaned) or None
 
     def _extract_bio(
         self,
@@ -443,18 +441,21 @@ class InstagramPlaywrightProfileFetcher(ProfileFetcher):
         display_name: str | None,
         header_text: str,
         description: str | None,
-        external_links: tuple[ExternalLink, ...],
+        external_links: tuple[
+            ExternalLink,
+            ...,
+        ],
     ) -> str | None:
-        """Extracts bio text prioritising header DOM lines over OpenGraph meta description fallbacks."""
-        bio_from_header = self._extract_bio_from_header(
+        """Extracts bio text, preferring visible header lines over meta description fallbacks."""
+        result = self._extract_bio_from_header(
             username=username,
             display_name=display_name,
             header_text=header_text,
             external_links=external_links,
         )
 
-        if bio_from_header:
-            return bio_from_header
+        if result:
+            return result
 
         return self._extract_bio_from_meta(description)
 
@@ -464,60 +465,68 @@ class InstagramPlaywrightProfileFetcher(ProfileFetcher):
         username: str,
         display_name: str | None,
         header_text: str,
-        external_links: tuple[ExternalLink, ...],
+        external_links: tuple[
+            ExternalLink,
+            ...,
+        ],
     ) -> str | None:
-        """Parses bio lines out of raw header text by stripping usernames, stats, links, and UI buttons."""
+        """Parses bio lines out of header text by stripping usernames, stats, and action elements."""
         if not header_text:
             return None
 
         lines = self._clean_header_lines(header_text)
 
-        external_link_texts = {
+        external_texts = {
             self._visible_url_text(str(link.url)).lower() for link in external_links
         }
+
+        normalized_username = username.lower()
+
+        normalized_display_name = display_name.lower() if display_name else None
 
         bio_lines: list[str] = []
         bio_started = False
 
-        normalized_username = username.lower()
-        normalized_display_name = display_name.lower() if display_name else None
-
         for line in lines:
             normalized_line = line.lower()
 
-            # Ignore username handles
-            if normalized_line == normalized_username:
+            # Ignore line if it equals username handle
+            if normalized_line in {
+                normalized_username,
+                f"@{normalized_username}",
+            }:
                 continue
 
-            if normalized_line == f"@{normalized_username}":
-                continue
-
-            # Ignore display name duplicate line
+            # Ignore line if it equals display name
             if normalized_display_name and normalized_line == normalized_display_name:
                 continue
 
-            # Ignore UI action buttons
+            # Ignore common action buttons and metric lines
             if normalized_line in self._IGNORED_HEADER_LINES:
                 continue
 
-            # Ignore follower/post metric counters
             if self._is_stat_line(normalized_line):
                 continue
 
             if self._looks_like_action_line(normalized_line):
                 continue
 
-            # Stop parsing on external link line once bio text has started
+            # Stop or skip on external links matching extracted targets
             if self._looks_like_external_link_line(
                 line=line,
-                external_link_texts=external_link_texts,
+                external_link_texts=external_texts,
             ):
                 if bio_started:
                     break
 
                 continue
 
-            # Stop parsing on highlight carousel boundaries once bio has started
+            if self._AND_MORE_PATTERN.search(line):
+                if bio_started:
+                    break
+
+                continue
+
             if self._is_probable_highlight_boundary(
                 line=line,
                 bio_started=bio_started,
@@ -528,6 +537,7 @@ class InstagramPlaywrightProfileFetcher(ProfileFetcher):
                 continue
 
             bio_lines.append(line)
+
             bio_started = True
 
         if not bio_lines:
@@ -540,64 +550,46 @@ class InstagramPlaywrightProfileFetcher(ProfileFetcher):
         cls,
         header_text: str,
     ) -> list[str]:
-        """Cleans formatting characters and strips whitespace from each header line."""
-        lines: list[str] = []
-
-        for raw_line in header_text.splitlines():
-            cleaned = cls._clean_unicode_text(raw_line).strip()
-
-            if not cleaned:
-                continue
-
-            lines.append(cleaned)
-
-        return lines
+        """Strips invisible Unicode characters and removes empty lines from raw header text."""
+        return [
+            cleaned
+            for raw in header_text.splitlines()
+            if (cleaned := cls._clean_unicode_text(raw))
+        ]
 
     @staticmethod
     def _extract_bio_from_meta(
         description: str | None,
     ) -> str | None:
-        """Extracts bio snippet from OpenGraph description if non-boilerplate."""
+        """Parses bio text from meta description when header extraction yields no results."""
         if not description:
             return None
 
         normalized = description.strip()
 
-        lower = normalized.lower()
-
-        boilerplate_prefixes = (
-            "see instagram photos and videos from",
-            "instagram photos and videos from",
-        )
-
-        if any(lower.startswith(prefix) for prefix in boilerplate_prefixes):
+        if normalized.lower().startswith(
+            (
+                "see instagram photos and videos from",
+                "instagram photos and videos from",
+            )
+        ):
             return None
 
-        separator = " - "
-
-        if separator not in normalized:
+        if " - " not in normalized:
             return None
 
-        _, raw_bio = normalized.split(
-            separator,
+        _, bio = normalized.split(
+            " - ",
             maxsplit=1,
         )
 
-        bio = raw_bio.strip().strip('"').strip()
-
-        return bio or None
+        return bio.strip().strip('"').strip() or None
 
     @staticmethod
     def _is_stat_line(
         line: str,
     ) -> bool:
-        """Checks if a string matches profile metric patterns (e.g., '100 posts', '1.5k followers')."""
-        patterns = (
-            r"^[\d.,kmb]+\s+posts?$",
-            r"^[\d.,kmb]+\s+followers?$",
-            r"^[\d.,kmb]+\s+following$",
-        )
-
+        """Determines if a line matches post, follower, or following count patterns."""
         return any(
             re.fullmatch(
                 pattern,
@@ -605,21 +597,26 @@ class InstagramPlaywrightProfileFetcher(ProfileFetcher):
                 flags=re.IGNORECASE,
             )
             is not None
-            for pattern in patterns
+            for pattern in (
+                r"^[\d.,kmb]+\s+posts?$",
+                r"^[\d.,kmb]+\s+followers?$",
+                r"^[\d.,kmb]+\s+following$",
+            )
         )
 
     @staticmethod
     def _looks_like_action_line(
         line: str,
     ) -> bool:
-        """Checks if line represents an action button label."""
-        prefixes = (
-            "follow ",
-            "message ",
-            "contact ",
+        """Checks if a string represents an action button label."""
+        return any(
+            line.startswith(prefix)
+            for prefix in (
+                "follow ",
+                "message ",
+                "contact ",
+            )
         )
-
-        return any(line.startswith(prefix) for prefix in prefixes)
 
     @staticmethod
     def _looks_like_external_link_line(
@@ -627,8 +624,8 @@ class InstagramPlaywrightProfileFetcher(ProfileFetcher):
         line: str,
         external_link_texts: set[str],
     ) -> bool:
-        """Determines if a line matches known external link domains or URL schemas."""
-        normalized_line = (
+        """Checks if a line matches extracted external link domain representations."""
+        normalized = (
             line.lower()
             .replace("https://", "")
             .replace("http://", "")
@@ -636,25 +633,15 @@ class InstagramPlaywrightProfileFetcher(ProfileFetcher):
             .rstrip("/")
         )
 
-        if re.match(
-            r"^https?://",
-            line,
-            flags=re.IGNORECASE,
-        ):
-            return True
-
-        for external_text in external_link_texts:
-            normalized_external = (
-                external_text.replace("https://", "")
-                .replace("http://", "")
-                .removeprefix("www.")
-                .rstrip("/")
-            )
-
-            if normalized_external and normalized_external in normalized_line:
-                return True
-
-        return False
+        return any(
+            external_text.replace("https://", "")
+            .replace("http://", "")
+            .removeprefix("www.")
+            .rstrip("/")
+            in normalized
+            for external_text in external_link_texts
+            if external_text
+        )
 
     @staticmethod
     def _is_probable_highlight_boundary(
@@ -662,16 +649,14 @@ class InstagramPlaywrightProfileFetcher(ProfileFetcher):
         line: str,
         bio_started: bool,
     ) -> bool:
-        """Identifies numeric labels indicating story highlight carousels after bio parsing has started."""
+        """Identifies numeric story highlight titles after bio text parsing has started."""
         if not bio_started:
             return False
-
-        normalized = line.strip()
 
         return (
             re.fullmatch(
                 r"[۰-۹٠-٩\d]+",
-                normalized,
+                line.strip(),
             )
             is not None
         )
@@ -680,13 +665,10 @@ class InstagramPlaywrightProfileFetcher(ProfileFetcher):
     def _visible_url_text(
         url: str,
     ) -> str:
-        """Converts a URL to its stripped host and path display representation."""
+        """Converts a full URL string into its core netloc and path representation."""
         parsed = urlparse(url)
 
-        host = parsed.netloc.lower().removeprefix("www.")
-        path = parsed.path.rstrip("/")
-
-        return f"{host}{path}"
+        return parsed.netloc.removeprefix("www.") + parsed.path.rstrip("/")
 
     def _extract_count(
         self,
@@ -694,11 +676,9 @@ class InstagramPlaywrightProfileFetcher(ProfileFetcher):
         text: str,
         label: str,
     ) -> int:
-        """Extracts a metric count preceding a label using regex."""
-        pattern = rf"([\d.,]+(?:\.\d+)?" rf"\s*[KMB]?)" rf"\s+{re.escape(label)}"
-
+        """Extracts metric count preceding a label using regular expressions."""
         match = re.search(
-            pattern,
+            (rf"([\d.,]+(?:\.\d+)?" rf"\s*[KMB]?)" rf"\s+{re.escape(label)}"),
             text,
             flags=re.IGNORECASE,
         )
@@ -712,10 +692,10 @@ class InstagramPlaywrightProfileFetcher(ProfileFetcher):
     def _parse_compact_count(
         value: str,
     ) -> int:
-        """Converts compact numerical strings with K/M/B suffixes to whole integers."""
+        """Converts compact numerical strings with K/M/B multipliers into whole integers."""
         normalized = value.strip().lower().replace(",", "").replace(" ", "")
 
-        multipliers: dict[str, int] = {
+        multipliers = {
             "k": 1_000,
             "m": 1_000_000,
             "b": 1_000_000_000,
@@ -724,100 +704,170 @@ class InstagramPlaywrightProfileFetcher(ProfileFetcher):
         suffix = normalized[-1]
 
         if suffix in multipliers:
-            number_part = normalized[:-1]
-            number = float(number_part)
-
-            return int(number * multipliers[suffix])
+            return int(float(normalized[:-1]) * multipliers[suffix])
 
         return int(float(normalized))
 
     def _extract_external_links(
         self,
+        *,
         page: Page,
+        header_text: str,
+        username: str,
     ) -> tuple[ExternalLink, ...]:
-        """Extracts external URLs specifically located inside the profile header."""
+        """Extracts, unwraps, and normalizes external links from header anchors and visible text."""
+        urls: list[str] = []
+
         header = page.locator("header").first
 
-        if header.count() == 0:
-            return ()
+        if header.count() > 0:
+            hrefs = header.locator("a[href]").evaluate_all("""
+                elements => elements
+                    .map(element => element.href)
+                    .filter(Boolean)
+                """)
 
-        hrefs = header.locator("a[href]").evaluate_all("""
-            elements => elements
-                .map(element => element.href)
-                .filter(Boolean)
-            """)
+            if isinstance(
+                hrefs,
+                list,
+            ):
+                for raw_href in hrefs:
+                    if isinstance(
+                        raw_href,
+                        str,
+                    ):
+                        urls.append(self._unwrap_instagram_redirect(raw_href))
 
-        if not isinstance(hrefs, list):
-            return ()
+        urls.extend(
+            self._extract_visible_urls(
+                text=header_text,
+                username=username,
+            )
+        )
 
         links: list[ExternalLink] = []
+
         seen: set[str] = set()
 
-        for raw_href in hrefs:
-            if not isinstance(raw_href, str):
+        for url in urls:
+            normalized = url.strip()
+
+            if not normalized or not self._is_external_url(normalized):
                 continue
 
-            href = self._unwrap_instagram_redirect(raw_href)
+            canonical_key = self._canonical_url_key(normalized)
 
-            if not self._is_external_url(href):
-                continue
-
-            normalized_href = href.strip()
-
-            if not normalized_href or normalized_href in seen:
+            if not canonical_key or canonical_key in seen:
                 continue
 
             try:
-                external_link = ExternalLink(
-                    # Wrapped in HttpUrl for Pydantic v2 type checking compatibility
-                    url=HttpUrl(normalized_href),
+                link = ExternalLink(
+                    url=HttpUrl(normalized),
                     title=None,
-                    type=self._detect_link_type(normalized_href),
+                    type=self._detect_link_type(normalized),
                 )
 
             except ValueError:
                 continue
 
-            links.append(external_link)
-            seen.add(normalized_href)
+            links.append(link)
+
+            seen.add(canonical_key)
 
         return tuple(links)
+
+    def _extract_visible_urls(
+        self,
+        *,
+        text: str,
+        username: str,
+    ) -> list[str]:
+        """Scans raw header text for unhyperlinked visible domains and prepends HTTPS scheme."""
+        urls: list[str] = []
+
+        normalized_username = username.strip().lstrip("@").lower()
+
+        for match in self._VISIBLE_DOMAIN_PATTERN.finditer(text):
+            domain = match.group("domain").rstrip(".,،؛:!?)")
+
+            if not domain:
+                continue
+
+            if domain.lower().startswith(
+                (
+                    "http://",
+                    "https://",
+                )
+            ):
+                url = domain
+            else:
+                url = f"https://{domain}"
+
+            parsed = urlparse(url)
+
+            hostname = (parsed.hostname or "").lower()
+
+            # Exclude domains matching user's own handle
+            if hostname == normalized_username:
+                continue
+
+            urls.append(url)
+
+        return urls
+
+    @staticmethod
+    def _canonical_url_key(
+        url: str,
+    ) -> str:
+        """Generates a normalized deduplication key for a given URL string."""
+        parsed = urlparse(url)
+
+        hostname = (parsed.hostname or "").lower()
+
+        if not hostname:
+            return ""
+
+        hostname = hostname.removeprefix("www.")
+
+        path = parsed.path.rstrip("/")
+
+        query = f"?{parsed.query}" if parsed.query else ""
+
+        return f"{hostname}{path}{query}"
 
     @staticmethod
     def _unwrap_instagram_redirect(
         url: str,
     ) -> str:
-        """Extracts destination URL targets from Instagram redirect links (l.instagram.com)."""
+        """Extracts true destination URL from Instagram redirect wrapper links (l.instagram.com)."""
         parsed = urlparse(url)
 
-        hostname = (parsed.hostname or "").lower()
-
-        if hostname != "l.instagram.com":
+        if (parsed.hostname or "").lower() != "l.instagram.com":
             return url
 
         query = parse_qs(parsed.query)
 
-        target_values = query.get("u") or query.get("url")
+        targets = query.get("u") or query.get("url")
 
-        if not target_values:
+        if not targets:
             return url
 
-        return unquote(target_values[0])
+        return unquote(targets[0])
 
     @staticmethod
     def _is_external_url(
         url: str,
     ) -> bool:
-        """Checks whether a URL points to an external destination rather than Meta/Instagram domains."""
+        """Determines whether a URL targets external domains rather than Meta/Instagram hosts."""
         parsed = urlparse(url)
 
-        if parsed.scheme not in {"http", "https"}:
+        if parsed.scheme not in {
+            "http",
+            "https",
+        }:
             return False
 
         hostname = (parsed.hostname or "").lower()
-
-        if not hostname:
-            return False
 
         blocked_hosts = {
             "instagram.com",
@@ -837,13 +887,13 @@ class InstagramPlaywrightProfileFetcher(ProfileFetcher):
             "www.threads.com",
         }
 
-        return hostname not in blocked_hosts
+        return bool(hostname and hostname not in blocked_hosts)
 
     @staticmethod
     def _detect_link_type(
         url: str,
     ) -> ExternalLinkType:
-        """Maps an external URL string to its ExternalLinkType enum variant."""
+        """Maps an external URL string to its ExternalLinkType enum category."""
         normalized = url.lower()
 
         if "wa.me/" in normalized or "whatsapp.com/" in normalized:
@@ -852,14 +902,15 @@ class InstagramPlaywrightProfileFetcher(ProfileFetcher):
         if "t.me/" in normalized or "telegram.me/" in normalized:
             return ExternalLinkType.TELEGRAM
 
-        link_in_bio_domains = (
-            "takl.ink/",
-            "linktr.ee/",
-            "zil.ink/",
-            "bio.link/",
-        )
-
-        if any(domain in normalized for domain in link_in_bio_domains):
+        if any(
+            domain in normalized
+            for domain in (
+                "takl.ink/",
+                "linktr.ee/",
+                "zil.ink/",
+                "bio.link/",
+            )
+        ):
             return ExternalLinkType.LINK_IN_BIO
 
         return ExternalLinkType.WEBSITE
@@ -868,9 +919,7 @@ class InstagramPlaywrightProfileFetcher(ProfileFetcher):
     def _clean_unicode_text(
         value: str,
     ) -> str:
-        """Strips invisible Unicode formatting and directional characters (e.g., RTL/LTR marks)."""
-        cleaned = "".join(
+        """Strips invisible Unicode formatting characters (e.g., directional control characters)."""
+        return "".join(
             character for character in value if unicodedata.category(character) != "Cf"
-        )
-
-        return cleaned.strip()
+        ).strip()

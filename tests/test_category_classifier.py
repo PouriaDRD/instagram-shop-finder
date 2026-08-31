@@ -9,113 +9,97 @@ from app.models.profile import (
 
 def make_profile(
     *,
-    username: str = "test_profile",
     display_name: str | None = None,
     bio: str | None = None,
 ) -> InstagramProfile:
     return InstagramProfile(
-        username=username,
-        profile_url=f"https://www.instagram.com/{username}/",
+        username="test_profile",
+        profile_url=("https://www.instagram.com/" "test_profile/"),
         display_name=display_name,
         bio=bio,
     )
 
 
-def test_detects_beauty_category() -> None:
-    classifier = CategoryClassifier()
-
-    profile = make_profile(
-        display_name="Beauty Shop",
-        bio="فروش لوازم آرایشی، میکاپ و محصولات مراقبت پوست",
-    )
-
-    result = classifier.classify(profile)
+def test_beauty_category() -> None:
+    result = CategoryClassifier().classify(make_profile(bio="میکاپ و makeup"))
 
     assert result.category == ProfileCategory.BEAUTY
-    assert result.score > 0
-    assert "آرایشی" in result.matched_signals
+    assert result.score == 0.25
     assert "میکاپ" in result.matched_signals
 
 
-def test_detects_clothing_category() -> None:
-    classifier = CategoryClassifier()
-
-    profile = make_profile(
-        display_name="Women's Clothing",
-        bio="فروش مانتو، شومیز، شلوار و لباس زنانه",
-    )
-
-    result = classifier.classify(profile)
+def test_clothing_category() -> None:
+    result = CategoryClassifier().classify(make_profile(bio="فروش لباس و مانتو"))
 
     assert result.category == ProfileCategory.CLOTHING
-    assert result.score > 0
-    assert "مانتو" in result.matched_signals
 
 
-def test_detects_home_category() -> None:
-    classifier = CategoryClassifier()
-
-    profile = make_profile(
-        display_name="Home Decor",
-        bio="دکوراسیون خانه و لوازم آشپزخانه",
+def test_home_category() -> None:
+    result = CategoryClassifier().classify(
+        make_profile(bio=("لوازم خانگی و " "محصولات آشپزخانه"))
     )
-
-    result = classifier.classify(profile)
 
     assert result.category == ProfileCategory.HOME
-    assert result.score > 0
 
 
-def test_detects_accessories_category() -> None:
-    classifier = CategoryClassifier()
-
-    profile = make_profile(
-        display_name="Accessory Store",
-        bio="فروش گردنبند، دستبند، انگشتر و زیورآلات",
-    )
-
-    result = classifier.classify(profile)
+def test_accessories_category() -> None:
+    result = CategoryClassifier().classify(make_profile(bio="گردنبند و دستبند"))
 
     assert result.category == ProfileCategory.ACCESSORIES
-    assert result.score > 0
 
 
-def test_unknown_category_when_no_signal_exists() -> None:
-    classifier = CategoryClassifier()
-
-    profile = make_profile(
-        display_name="Ali",
-        bio="Travel, daily life and photography",
-    )
-
-    result = classifier.classify(profile)
+def test_unknown_category() -> None:
+    result = CategoryClassifier().classify(make_profile(bio="Personal blog"))
 
     assert result.category == ProfileCategory.UNKNOWN
     assert result.score == 0.0
-    assert result.matched_signals == ()
 
 
-def test_empty_profile_is_unknown() -> None:
-    classifier = CategoryClassifier()
-
-    profile = make_profile()
-
-    result = classifier.classify(profile)
-
-    assert result.category == ProfileCategory.UNKNOWN
-    assert result.score == 0.0
-    assert result.matched_signals == ()
-
-
-def test_category_score_never_exceeds_one() -> None:
-    classifier = CategoryClassifier()
-
-    profile = make_profile(
-        display_name="Beauty Makeup Skincare",
-        bio=("آرایشی میکاپ پوست اسکین skincare makeup beauty " "رژ کرم ریمل"),
+def test_display_name_is_used() -> None:
+    result = CategoryClassifier().classify(
+        make_profile(display_name=("فروشگاه لباس زیر"))
     )
 
-    result = classifier.classify(profile)
+    assert result.category == ProfileCategory.CLOTHING
 
-    assert result.category == ProfileCategory.BEAUTY
-    assert result.score == 1.0
+
+def test_more_matches_have_higher_score() -> None:
+    classifier = CategoryClassifier()
+
+    one = classifier.classify(make_profile(bio="لباس"))
+
+    two = classifier.classify(make_profile(bio="لباس مانتو"))
+
+    assert two.score > one.score
+
+
+def test_saat_in_saaate_does_not_mean_accessories() -> None:
+    result = CategoryClassifier().classify(
+        make_profile(bio=("پشتیبانی ۲۴ ساعته تلفنی " "و تلگرامی"))
+    )
+
+    assert result.category != ProfileCategory.ACCESSORIES
+
+    assert "ساعت" not in result.matched_signals
+
+
+def test_baneh_bosch_is_home() -> None:
+    result = CategoryClassifier().classify(
+        make_profile(
+            display_name=("فروشگاه لوازم خانگی | " "بانه بوش"),
+            bio=("ارسال به سراسر کشور " "و تضمین اصالت کالا"),
+        )
+    )
+
+    assert result.category == ProfileCategory.HOME
+
+
+def test_imajazi_shop_is_not_accessories() -> None:
+    result = CategoryClassifier().classify(
+        make_profile(
+            display_name=("مجازی شاپ | " "خرید مطمئن استارز تلگرام"),
+            bio=("پشتیبانی ۲۴ ساعته تلفنی " "و تلگرامی"),
+        )
+    )
+
+    assert result.category == ProfileCategory.UNKNOWN

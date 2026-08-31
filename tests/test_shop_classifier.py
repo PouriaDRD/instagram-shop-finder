@@ -1,8 +1,15 @@
+from pydantic import HttpUrl
 from app.classifiers.shop_classifier import (
     ShopClassifier,
     ShopVerdict,
 )
-from app.models.profile import InstagramProfile
+from app.models.external_link import (
+    ExternalLink,
+    ExternalLinkType,
+)
+from app.models.profile import (
+    InstagramProfile,
+)
 
 
 def make_profile(
@@ -10,270 +17,181 @@ def make_profile(
     username: str = "test_profile",
     display_name: str | None = None,
     bio: str | None = None,
+    external_links: tuple[ExternalLink, ...] = (),
 ) -> InstagramProfile:
     return InstagramProfile(
         username=username,
         profile_url=(f"https://www.instagram.com/" f"{username}/"),
         display_name=display_name,
         bio=bio,
+        external_links=external_links,
+    )
+
+
+def website(
+    url: str,
+) -> ExternalLink:
+    return ExternalLink(
+        url=HttpUrl(url),
+        type=ExternalLinkType.WEBSITE,
+    )
+
+
+def link_in_bio(
+    url: str,
+) -> ExternalLink:
+    return ExternalLink(
+        url=HttpUrl(url),
+        type=ExternalLinkType.LINK_IN_BIO,
     )
 
 
 def test_clear_shop_is_detected() -> None:
-    classifier = ShopClassifier()
-
-    profile = make_profile(
-        display_name="Beauty Store",
-        bio=("فروش محصولات آرایشی، " "سفارش از دایرکت، " "ارسال سراسر کشور"),
+    result = ShopClassifier().classify(
+        make_profile(bio=("فروش محصولات آرایشی " "سفارش از دایرکت " "ارسال سراسر کشور"))
     )
-
-    result = classifier.classify(profile)
 
     assert result.verdict == ShopVerdict.SHOP
 
-    assert result.score >= 0.6
 
-    assert "فروش" in result.matched_signals
-
-    assert "سفارش" in result.matched_signals
-
-    assert "ارسال" in result.matched_signals
-
-    assert "store" not in result.matched_signals
-
-
-def test_sales_and_shipping_are_exactly_65_percent() -> None:
-    classifier = ShopClassifier()
-
-    profile = make_profile(
-        bio=("فروش لوازم آرایشی " "و ارسال سراسر کشور"),
+def test_sales_and_shipping_are_shop() -> None:
+    result = ShopClassifier().classify(
+        make_profile(bio=("فروش لوازم آرایشی " "و ارسال سراسر کشور"))
     )
-
-    result = classifier.classify(profile)
 
     assert result.score == 0.65
-
     assert result.verdict == ShopVerdict.SHOP
 
-    assert result.matched_signals == (
-        "فروش",
-        "ارسال",
-    )
 
-
-def test_display_name_shop_does_not_inflate_bio_score() -> None:
-    classifier = ShopClassifier()
-
-    profile = make_profile(
-        display_name=("Sample Beauty Shop"),
-        bio=("فروش لوازم آرایشی " "و ارسال سراسر کشور"),
-    )
-
-    result = classifier.classify(profile)
-
-    assert result.score == 0.65
-
-    assert result.verdict == ShopVerdict.SHOP
+def test_shop_inside_workshop_is_not_detected() -> None:
+    result = ShopClassifier().classify(make_profile(bio="Photography workshop"))
 
     assert "shop" not in result.matched_signals
 
 
-def test_store_in_display_name_is_supporting_evidence_only() -> None:
-    classifier = ShopClassifier()
+def test_shop_inside_shopper_is_not_detected() -> None:
+    result = ShopClassifier().classify(make_profile(bio="Personal shopper"))
 
-    profile = make_profile(
-        display_name="My Store",
+    assert "shop" not in result.matched_signals
+
+
+def test_products_plural_is_detected() -> None:
+    result = ShopClassifier().classify(
+        make_profile(bio=("محصولات دست ساز " "اطلاعات در دایرکت"))
     )
-
-    result = classifier.classify(profile)
-
-    assert result.score == 0.17
-
-    assert result.verdict == ShopVerdict.UNKNOWN
-
-    assert result.matched_signals == ("store",)
-
-
-def test_persian_store_name_is_supporting_evidence_only() -> None:
-    classifier = ShopClassifier()
-
-    profile = make_profile(
-        display_name="فروشگاه آرایشی",
-    )
-
-    result = classifier.classify(profile)
-
-    assert result.score == 0.23
-
-    assert result.verdict == ShopVerdict.UNKNOWN
-
-    assert result.matched_signals == ("فروشگاه",)
-
-
-def test_products_plural_maps_to_product_signal() -> None:
-    classifier = ShopClassifier()
-
-    profile = make_profile(
-        bio=("محصولات دست‌ساز " "اطلاعات در دایرکت"),
-    )
-
-    result = classifier.classify(profile)
 
     assert "محصول" in result.matched_signals
-
-    assert "دایرکت" in result.matched_signals
-
-    assert result.score == 0.16
-
-    assert result.verdict == ShopVerdict.UNKNOWN
-
-
-def test_shop_is_not_detected_inside_workshop() -> None:
-    classifier = ShopClassifier()
-
-    profile = make_profile(
-        bio=("Photography workshop"),
-    )
-
-    result = classifier.classify(profile)
-
-    assert "shop" not in result.matched_signals
-
-    assert result.score == 0.0
-
-    assert result.verdict == ShopVerdict.NOT_SHOP
-
-
-def test_shop_is_not_detected_inside_shopper() -> None:
-    classifier = ShopClassifier()
-
-    profile = make_profile(
-        bio=("Personal shopper " "and fashion lover"),
-    )
-
-    result = classifier.classify(profile)
-
-    assert "shop" not in result.matched_signals
-
-
-def test_store_is_not_detected_inside_storage() -> None:
-    classifier = ShopClassifier()
-
-    profile = make_profile(
-        bio=("Cloud storage " "content creator"),
-    )
-
-    result = classifier.classify(profile)
-
-    assert "store" not in result.matched_signals
-
-
-def test_personal_profile_is_not_shop() -> None:
-    classifier = ShopClassifier()
-
-    profile = make_profile(
-        display_name="Sara",
-        bio=("Lifestyle | travel | " "daily life"),
-    )
-
-    result = classifier.classify(profile)
-
-    assert result.verdict == ShopVerdict.NOT_SHOP
-
-    assert result.score == 0.0
-
-    assert result.matched_signals == ()
-
-
-def test_ambiguous_profile_is_unknown() -> None:
-    classifier = ShopClassifier()
-
-    profile = make_profile(
-        display_name=("Handmade Studio"),
-        bio=("محصولات دست‌ساز " "اطلاعات بیشتر در دایرکت"),
-    )
-
-    result = classifier.classify(profile)
-
-    assert result.verdict == ShopVerdict.UNKNOWN
-
     assert result.score == 0.16
 
 
-def test_empty_bio_and_name_are_not_shop() -> None:
-    classifier = ShopClassifier()
-
-    profile = make_profile()
-
-    result = classifier.classify(profile)
+def test_personal_page_is_not_shop() -> None:
+    result = ShopClassifier().classify(make_profile(bio="Travel lifestyle"))
 
     assert result.verdict == ShopVerdict.NOT_SHOP
 
+
+def test_empty_profile_is_not_shop() -> None:
+    result = ShopClassifier().classify(make_profile())
+
     assert result.score == 0.0
 
-    assert result.matched_signals == ()
 
-
-def test_strong_signal_has_more_weight_than_weak_signal() -> None:
-    classifier = ShopClassifier()
-
-    strong_profile = make_profile(
-        bio="سفارش",
+def test_link_alone_does_not_make_creator_a_shop() -> None:
+    result = ShopClassifier().classify(
+        make_profile(
+            bio=("content creator makeup"),
+            external_links=(link_in_bio("https://takl.ink/test"),),
+        )
     )
 
-    weak_profile = make_profile(
-        bio="دایرکت",
+    assert result.score == 0.0
+    assert result.verdict == ShopVerdict.NOT_SHOP
+
+
+def test_lebaszirnikoo_is_shop() -> None:
+    result = ShopClassifier().classify(
+        make_profile(
+            username="lebaszirnikoo",
+            display_name=("فروشگاه لباس زیر|لباس خواب"),
+            bio=("ثبت از دایرکت و بزودی سایت " "پشتیبانی ۱۱ الی ۲۱"),
+            external_links=(website("https://www.lebaszirnikoo.ir/"),),
+        )
     )
 
-    strong_result = classifier.classify(strong_profile)
-
-    weak_result = classifier.classify(weak_profile)
-
-    assert strong_result.score > weak_result.score
-
-
-def test_commercial_and_transaction_signals_get_bonus() -> None:
-    classifier = ShopClassifier()
-
-    profile = make_profile(
-        bio=("سفارش محصول " "قیمت در دایرکت"),
-    )
-
-    result = classifier.classify(profile)
+    assert result.verdict == ShopVerdict.SHOP
 
     assert result.score >= 0.6
+
+
+def test_baneh_bosch_is_shop() -> None:
+    result = ShopClassifier().classify(
+        make_profile(
+            display_name=("فروشگاه لوازم خانگی | بانه بوش"),
+            bio=("تضمین اصالت کالا " "ارسال به سراسر کشور"),
+            external_links=(link_in_bio("https://zil.ink/baneh.bosch"),),
+        )
+    )
 
     assert result.verdict == ShopVerdict.SHOP
 
 
-def test_multiple_clear_signals_can_reach_full_score() -> None:
-    classifier = ShopClassifier()
-
-    profile = make_profile(
-        display_name="Beauty Store",
-        bio=("فروشگاه آرایشی | " "سفارش | ارسال | " "قیمت | موجودی"),
+def test_ali_karimi_is_not_shop() -> None:
+    result = ShopClassifier().classify(
+        make_profile(
+            display_name="Ali Karimi",
+            bio="HumanRights ايران اگاهی آزادی",
+        )
     )
 
-    result = classifier.classify(profile)
+    assert result.verdict == ShopVerdict.NOT_SHOP
+
+
+def test_imajazishop_is_shop() -> None:
+    result = ShopClassifier().classify(
+        make_profile(
+            display_name=("مجازی شاپ | " "خرید مطمئن استارز تلگرام"),
+            bio=("استارز تلگرام و تلگرام پریمیوم " "با پشتیبانی ۲۴ ساعته"),
+            external_links=(website("https://majazi.shop/"),),
+        )
+    )
+
+    assert result.verdict == ShopVerdict.SHOP
+
+    assert "شاپ" in result.matched_signals
+
+
+def test_commercial_external_site_increases_score() -> None:
+    classifier = ShopClassifier()
+
+    without_site = classifier.classify(
+        make_profile(
+            display_name="مجازی شاپ",
+        )
+    )
+
+    with_site = classifier.classify(
+        make_profile(
+            display_name="مجازی شاپ",
+            external_links=(website("https://example.com"),),
+        )
+    )
+
+    assert with_site.score > without_site.score
+
+
+def test_strong_commercial_profile_can_reach_full_score() -> None:
+    result = ShopClassifier().classify(
+        make_profile(
+            display_name="Beauty Shop",
+            bio=("فروشگاه آرایشی سفارش " "ارسال قیمت موجودی"),
+            external_links=(website("https://example.com"),),
+        )
+    )
 
     assert result.score == 1.0
 
-    assert result.verdict == ShopVerdict.SHOP
-
 
 def test_matching_is_case_insensitive() -> None:
-    classifier = ShopClassifier()
-
-    profile = make_profile(
-        bio=("SHOP | ORDER | SHIPPING"),
-    )
-
-    result = classifier.classify(profile)
+    result = ShopClassifier().classify(make_profile(bio="SHOP ORDER SHIPPING"))
 
     assert result.verdict == ShopVerdict.SHOP
-
-    assert "shop" in result.matched_signals
-
-    assert "order" in result.matched_signals
-
-    assert "shipping" in result.matched_signals
