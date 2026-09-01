@@ -15,6 +15,9 @@ from app.cli.profile_command import (
 from app.cli.reprocess_command import (
     run_reprocess_command,
 )
+from app.cli.delete_data_command import (
+    run_delete_data_command,
+)
 
 
 def run_menu() -> None:
@@ -29,7 +32,8 @@ def run_menu() -> None:
     print("3. Filter saved profiles")
     print("4. Reprocess saved profiles")
     print("5. Setup Instagram session")
-    print("6. Exit")
+    print("6. Delete stored data")
+    print("7. Exit")
 
     print()
 
@@ -56,6 +60,10 @@ def run_menu() -> None:
         return
 
     if choice == "6":
+        run_delete_data_command()
+        return
+
+    if choice == "7":
         return
 
     print()

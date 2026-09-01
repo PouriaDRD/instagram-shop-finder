@@ -12,4 +12,6 @@ LATEST_DISCOVERY_FILE = DATA_DIR / "latest_discovery.json"
 
 LATEST_VALIDATION_FILE = DATA_DIR / "latest_validation.json"
 
+BACKUPS_DIR = DATA_DIR / "backups"
+
 INSTAGRAM_BROWSER_PROFILE_DIR = DATA_DIR / "instagram-browser-profile"

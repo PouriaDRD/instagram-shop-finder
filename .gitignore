@@ -9,6 +9,8 @@ data/*.csv
 data/*.db
 data/*.sqlite3
 
+data/*backups/*
+
 *.csv
 *.db
 *.sqlite3
