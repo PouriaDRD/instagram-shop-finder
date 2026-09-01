@@ -1,186 +1,358 @@
-"""CLI input parsing and validation utilities for Instagram profile management."""
+import re
+from app.models.profile import (
+    ProfileCategory,
+)
 
-from app.models.profile import ProfileCategory
+_PERSIAN_DIGITS = str.maketrans(
+    {
+        "۰": "0",
+        "۱": "1",
+        "۲": "2",
+        "۳": "3",
+        "۴": "4",
+        "۵": "5",
+        "۶": "6",
+        "۷": "7",
+        "۸": "8",
+        "۹": "9",
+        "٠": "0",
+        "١": "1",
+        "٢": "2",
+        "٣": "3",
+        "٤": "4",
+        "٥": "5",
+        "٦": "6",
+        "٧": "7",
+        "٨": "8",
+        "٩": "9",
+    }
+)
 
 
-def parse_compact_number(value: str) -> int:
-    """Parses compact string representations of numbers (e.g., '10k', '1.5m') into integers.
+_SUFFIX_MULTIPLIERS: dict[
+    str,
+    int,
+] = {
+    "k": 1_000,
+    "thousand": 1_000,
+    "هزار": 1_000,
+    "m": 1_000_000,
+    "million": 1_000_000,
+    "میلیون": 1_000_000,
+    "b": 1_000_000_000,
+    "billion": 1_000_000_000,
+    "میلیارد": 1_000_000_000,
+}
 
-    Args:
-        value: Raw input string containing digits and optional compact multipliers ('k', 'm', 'b').
 
-    Returns:
-        Extracted whole integer value.
+_FOLLOWER_WORDS = (
+    "followers",
+    "follower",
+    "فالوورها",
+    "فالوور",
+)
 
-    Raises:
-        ValueError: If value is empty, missing a numeric prefix, invalid, negative,
-            or resolves to a non-whole number.
+
+def _normalize_numeric_text(
+    value: str,
+) -> str:
+    text = value.strip()
+
+    text = text.translate(_PERSIAN_DIGITS)
+
+    # Persian decimal separator
+    text = text.replace(
+        "٫",
+        ".",
+    )
+
+    # Thousands separators
+    text = text.replace(
+        "٬",
+        "",
+    )
+
+    text = text.replace(
+        "،",
+        "",
+    )
+
+    text = text.replace(
+        ",",
+        "",
+    )
+
+    text = text.replace(
+        "_",
+        "",
+    )
+
+    text = text.strip()
+
+    return text
+
+
+def parse_compact_number(
+    value: str,
+) -> int:
     """
-    normalized = (
-        value.strip()
-        .lower()
-        .replace(
-            ",",
+    Parse human-friendly follower counts.
+
+    Supported examples:
+
+        10000
+        10,000
+        ۱۰٬۰۰۰
+        10k
+        10.5k
+        500K
+        0.5m
+        1M
+        10 thousand
+        10 هزار
+        1 million
+        ۱ میلیون
+        1b
+        1 billion
+        10k+
+        10k followers
+        ۱۰ هزار فالوور
+    """
+
+    if not isinstance(
+        value,
+        str,
+    ):
+        raise ValueError("Follower count must be text.")
+
+    text = _normalize_numeric_text(value)
+
+    if not text:
+        raise ValueError("Follower count cannot be empty.")
+
+    text = text.casefold()
+
+    # Remove optional trailing +
+    text = re.sub(
+        r"\+\s*$",
+        "",
+        text,
+    ).strip()
+
+    # Remove follower-related labels.
+    for word in _FOLLOWER_WORDS:
+        text = re.sub(
+            rf"\b{re.escape(word)}\b",
             "",
+            text,
+            flags=re.IGNORECASE,
+        ).strip()
+
+    # Collapse repeated whitespace.
+    text = re.sub(
+        r"\s+",
+        " ",
+        text,
+    )
+
+    # First try:
+    # number + optional suffix
+    match = re.fullmatch(
+        (
+            r"([0-9]+(?:\.[0-9]+)?)"
+            r"\s*"
+            r"(k|m|b|"
+            r"thousand|million|billion|"
+            r"هزار|میلیون|میلیارد)?"
+        ),
+        text,
+        flags=re.IGNORECASE,
+    )
+
+    if match:
+        number_text = match.group(1)
+
+        suffix = match.group(2)
+
+        try:
+            number = float(number_text)
+
+        except ValueError as exc:
+            raise ValueError(f"Invalid follower count: {value}") from exc
+
+        multiplier = 1
+
+        if suffix:
+            multiplier = _SUFFIX_MULTIPLIERS[suffix.casefold()]
+
+        result = number * multiplier
+
+        if result < 0:
+            raise ValueError("Follower count cannot be negative.")
+
+        if not result.is_integer():
+            raise ValueError("Follower count must resolve " "to a whole number.")
+
+        return int(result)
+
+    # Support regular numbers containing spaces:
+    #
+    # 10 000
+    #
+    spaced_number = re.fullmatch(
+        r"[0-9]+(?: [0-9]{3})+",
+        text,
+    )
+
+    if spaced_number:
+        return int(
+            text.replace(
+                " ",
+                "",
+            )
         )
-        .replace(
-            "_",
-            "",
-        )
-        .replace(
-            " ",
-            "",
+
+    raise ValueError(
+        (
+            f"Invalid follower count: {value!r}. "
+            "Examples: 10000, 10,000, 10k, "
+            "10.5k, 500K, 0.5m, 10 هزار, "
+            "۱ میلیون."
         )
     )
 
-    if not normalized:
-        raise ValueError("Value cannot be empty.")
 
-    multipliers: dict[
-        str,
-        int,
-    ] = {
-        "k": 1_000,
-        "m": 1_000_000,
-        "b": 1_000_000_000,
-    }
+def print_follower_count_help() -> None:
+    print()
+    print("Follower count formats")
+    print("----------------------")
 
-    suffix = normalized[-1]
+    print("You can use any of these formats:")
 
-    # Evaluate compact suffix multiplier if present
-    if suffix in multipliers:
-        number_part = normalized[:-1]
+    print()
+    print("  Exact number : 10000")
+    print("  Thousands    : 10,000")
+    print("  Persian      : ۱۰٬۰۰۰")
+    print("  Compact K    : 10k / 10K / 10.5k")
+    print("  Compact M    : 0.5m / 1M")
+    print("  Words        : 10 هزار / 1 میلیون")
+    print("  Optional +   : 10k+ / 500k+")
+    print("  Label        : 10k followers / " "۱۰ هزار فالوور")
 
-        if not number_part:
-            raise ValueError("Number is missing before suffix.")
-
-        try:
-            number = float(number_part)
-
-        except ValueError as exc:
-            raise ValueError(f"Invalid number: {value}") from exc
-
-        result = number * multipliers[suffix]
-
-    else:
-        try:
-            result = float(normalized)
-
-        except ValueError as exc:
-            raise ValueError(f"Invalid number: {value}") from exc
-
-    if result < 0:
-        raise ValueError("Value cannot be negative.")
-
-    if not result.is_integer():
-        raise ValueError("Final value must resolve to a whole number.")
-
-    return int(result)
+    print()
+    print("Examples: 10k = 10,000 | " "500k = 500,000 | " "1.5m = 1,500,000")
 
 
-def read_positive_int(prompt: str, *, default: int | None = None) -> int:
-    """Prompts CLI user for a positive whole integer with optional default fallback.
-
-    Args:
-        prompt: User display message.
-        default: Fallback integer returned when input is empty.
-
-    Returns:
-        Validated positive integer.
-    """
+def read_optional_follower_count(
+    prompt: str,
+) -> int | None:
     while True:
-        value = input(prompt).strip()
+        raw = input(prompt).strip()
 
-        if not value and default is not None:
-            return default
-
-        try:
-            parsed = int(value)
-
-        except ValueError:
-            print("Please enter a positive whole number.")
-            continue
-
-        if parsed <= 0:
-            print("Value must be greater than zero.")
-            continue
-
-        return parsed
-
-
-def read_optional_follower_count(prompt: str) -> int | None:
-    """Prompts CLI user for an optional follower count, allowing compact notation.
-
-    Args:
-        prompt: User display message.
-
-    Returns:
-        Parsed integer follower count, or None if skipped.
-    """
-    while True:
-        value = input(prompt).strip()
-
-        if not value:
+        if not raw:
             return None
 
         try:
-            return parse_compact_number(value)
+            return parse_compact_number(raw)
+
+        except ValueError as exc:
+            print()
+            print(f"Invalid follower count: {exc}")
+
+            print(
+                "Examples: "
+                "10000, 10,000, 10k, "
+                "10.5k, 500k, 0.5m, "
+                "10 هزار, ۱ میلیون"
+            )
+
+            print()
+
+
+def read_positive_int(
+    prompt: str,
+    *,
+    default: int | None = None,
+) -> int:
+    while True:
+        raw = input(prompt).strip()
+
+        if not raw:
+            if default is not None:
+                return default
+
+            print("A value is required.")
+
+            continue
+
+        try:
+            value = int(raw.translate(_PERSIAN_DIGITS))
 
         except ValueError:
-            print("Invalid follower count.")
-            print("Examples: 10000, 10k, 1.5k, 468k, 1m, 2.5m")
+            print("Please enter a valid integer.")
+
+            continue
+
+        if value <= 0:
+            print("Value must be greater than zero.")
+
+            continue
+
+        return value
 
 
 def read_optional_float(
     prompt: str,
     *,
-    min_value: float = 0.0,
-    max_value: float = 1.0,
+    min_value: float | None = None,
+    max_value: float | None = None,
 ) -> float | None:
-    """Prompts CLI user for an optional float constrained within a specific numeric range.
-
-    Args:
-        prompt: User display message.
-        min_value: Minimum allowable float bound.
-        max_value: Maximum allowable float bound.
-
-    Returns:
-        Validated float value, or None if skipped.
-    """
     while True:
-        value = input(prompt).strip()
+        raw = input(prompt).strip()
 
-        if not value:
+        if not raw:
             return None
 
+        normalized = (
+            raw.translate(_PERSIAN_DIGITS)
+            .replace(
+                "٫",
+                ".",
+            )
+            .replace(
+                "،",
+                ".",
+            )
+        )
+
         try:
-            parsed = float(value)
+            value = float(normalized)
 
         except ValueError:
             print("Please enter a valid number.")
+
             continue
 
-        if parsed < min_value or parsed > max_value:
-            print(f"Value must be between {min_value} and {max_value}.")
+        if min_value is not None and value < min_value:
+            print(f"Value must be >= " f"{min_value}.")
+
             continue
 
-        return parsed
+        if max_value is not None and value > max_value:
+            print(f"Value must be <= " f"{max_value}.")
+
+            continue
+
+        return value
 
 
-def read_optional_bool(prompt: str) -> bool | None:
-    """Prompts CLI user for an optional boolean input supporting common string representations.
-
-    Args:
-        prompt: User display message.
-
-    Returns:
-        True/False for affirmative/negative answers, or None for wildcards/empty inputs.
-    """
+def read_optional_bool(
+    prompt: str,
+) -> bool | None:
     while True:
-        value = input(prompt).strip().lower()
+        raw = input(prompt).strip().lower()
 
-        # Wildcards or empty string resolve to None (filter bypassed)
-        if value in {
+        if raw in {
             "",
             "all",
             "any",
@@ -188,72 +360,74 @@ def read_optional_bool(prompt: str) -> bool | None:
         }:
             return None
 
-        if value in {
+        if raw in {
             "y",
             "yes",
             "true",
             "1",
+            "بله",
+            "آره",
         }:
             return True
 
-        if value in {
+        if raw in {
             "n",
             "no",
             "false",
             "0",
+            "خیر",
+            "نه",
         }:
             return False
 
-        print("Please enter y, n, all, or leave empty.")
+        print("Enter yes/no or leave empty.")
 
 
-def read_optional_category() -> ProfileCategory | None:
-    """Displays indexed list of available ProfileCategory options and prompts CLI user selection.
-
-    Returns:
-        Selected ProfileCategory enum member, or None if skipped/all selected.
-    """
-    print()
-    print("Available categories")
-    print("--------------------")
-
-    # Filter out UNKNOWN category from user selection menu
-    categories = [
-        category for category in ProfileCategory if category != ProfileCategory.UNKNOWN
+def read_optional_category(
+    prompt: str = "Category: ",
+) -> ProfileCategory | None:
+    available_categories = [
+        category
+        for category in ProfileCategory
+        if (category != ProfileCategory.UNKNOWN)
     ]
 
-    for (
-        index,
-        category,
-    ) in enumerate(
-        categories,
+    print()
+    print("Available categories:")
+
+    for index, category in enumerate(
+        available_categories,
         start=1,
     ):
-        print(f"{index}. {category.value}")
+        print(f"{index}. " f"{category.value}")
 
-    print()
-    print("Leave empty or enter 'all' to include all categories.")
+    print("0. all")
 
     while True:
-        value = input("Category number: ").strip().lower()
+        raw = input(prompt).strip()
 
-        if value in {
+        if raw.casefold() in {
             "",
+            "0",
             "all",
             "any",
             "*",
         }:
             return None
 
+        normalized = raw.casefold()
+
+        for category in available_categories:
+            if category.value.casefold() == normalized:
+                return category
+
         try:
-            index = int(value)
+            index = int(raw.translate(_PERSIAN_DIGITS))
 
         except ValueError:
-            print("Please enter a valid category number or 'all'.")
-            continue
+            index = -1
 
-        if index < 1 or index > len(categories):
-            print("Category number is out of range.")
-            continue
+        if 1 <= index <= len(available_categories):
+            return available_categories[index - 1]
 
-        return categories[index - 1]
+        print("Invalid category. " "Choose a listed number/name " "or enter all.")

@@ -3,11 +3,15 @@
 geoip/*.mmdb
 
 # data
-data/*
-data/*.json
+instagram-browser-profile
+
 data/*.csv
 data/*.db
 data/*.sqlite3
+
+*.csv
+*.db
+*.sqlite3
 
 ### OSX ###
 .DS_Store

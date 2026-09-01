@@ -12,8 +12,8 @@ from app.filters.profile_filter import (
 from app.models.profile import (
     InstagramProfile,
 )
-from app.storage.json_storage import (
-    JsonProfileStorage,
+from app.storage.profile_storage import (
+    ProfileStorage,
 )
 
 
@@ -63,7 +63,7 @@ def build_filter_from_input() -> ProfileFilter:
 
 
 def run_filter_command() -> None:
-    storage = JsonProfileStorage(PROFILES_FILE)
+    storage = ProfileStorage(PROFILES_FILE)
 
     filter_engine = ProfileFilterEngine()
 

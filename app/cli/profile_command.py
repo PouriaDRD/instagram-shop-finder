@@ -19,8 +19,8 @@ from app.mappers.profile_mapper import (
 from app.models.profile import (
     InstagramProfile,
 )
-from app.storage.json_storage import (
-    JsonProfileStorage,
+from app.storage.profile_storage import (
+    ProfileStorage,
 )
 
 
@@ -36,7 +36,7 @@ def run_profile_command() -> None:
 
     category_classifier = CategoryClassifier()
 
-    storage = JsonProfileStorage(PROFILES_FILE)
+    storage = ProfileStorage(PROFILES_FILE)
 
     try:
         with InstagramCrawlSession() as session:

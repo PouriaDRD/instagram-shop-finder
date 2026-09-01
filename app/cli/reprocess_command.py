@@ -4,7 +4,7 @@ from app.classifiers.shop_classifier import ShopClassifier, ShopVerdict
 from app.config import PROFILES_FILE
 from app.models.external_link import ExternalLink
 from app.models.profile import InstagramProfile
-from app.storage.json_storage import JsonProfileStorage
+from app.storage.profile_storage import ProfileStorage
 
 
 def apply_classifications(
@@ -61,7 +61,7 @@ def apply_classifications(
 
 
 def run_reprocess_command() -> None:
-    storage = JsonProfileStorage(PROFILES_FILE)
+    storage = ProfileStorage(PROFILES_FILE)
 
     profiles = storage.get_all()
 

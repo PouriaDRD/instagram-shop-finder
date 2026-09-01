@@ -1,0 +1,340 @@
+{
+  "run_id": "b66a10ebe2ae4ff580f040dadc9ce520",
+  "started_at": "2026-09-01T08:48:59.190916+00:00",
+  "category": "fashion",
+  "filters": {
+    "min_followers": 10000,
+    "max_followers": null,
+    "min_shop_score": 0.2,
+    "target_results": 5,
+    "additional_query": null,
+    "max_candidates": 150
+  },
+  "candidate_count": 36,
+  "candidates": [
+    {
+      "username": "hircana_com",
+      "profile_url": "https://www.instagram.com/hircana_com/",
+      "query": "site:instagram.com \"فشن\" فروشگاه",
+      "source": "MultiSourceDiscoverySource",
+      "requested_category": "fashion",
+      "is_new_candidate": false,
+      "discovered_at": "2026-09-01T08:49:53.792070+00:00"
+    },
+    {
+      "username": "kif.fashion3",
+      "profile_url": "https://www.instagram.com/kif.fashion3/",
+      "query": "site:instagram.com \"فشن\" فروشگاه",
+      "source": "MultiSourceDiscoverySource",
+      "requested_category": "fashion",
+      "is_new_candidate": true,
+      "discovered_at": "2026-09-01T08:49:53.798121+00:00"
+    },
+    {
+      "username": "fashi0nsh0w",
+      "profile_url": "https://www.instagram.com/fashi0nsh0w/",
+      "query": "site:instagram.com \"فشن\" فروشگاه",
+      "source": "MultiSourceDiscoverySource",
+      "requested_category": "fashion",
+      "is_new_candidate": true,
+      "discovered_at": "2026-09-01T08:49:53.806380+00:00"
+    },
+    {
+      "username": "limo.underwear",
+      "profile_url": "https://www.instagram.com/limo.underwear/",
+      "query": "site:instagram.com \"فشن\" فروشگاه",
+      "source": "MultiSourceDiscoverySource",
+      "requested_category": "fashion",
+      "is_new_candidate": false,
+      "discovered_at": "2026-09-01T08:49:53.817263+00:00"
+    },
+    {
+      "username": "monaiefashion",
+      "profile_url": "https://www.instagram.com/monaiefashion/",
+      "query": "site:instagram.com \"فشن\" فروشگاه",
+      "source": "MultiSourceDiscoverySource",
+      "requested_category": "fashion",
+      "is_new_candidate": true,
+      "discovered_at": "2026-09-01T08:49:53.824820+00:00"
+    },
+    {
+      "username": "foroshgah.fashion",
+      "profile_url": "https://www.instagram.com/foroshgah.fashion/",
+      "query": "site:instagram.com \"فشن\" فروشگاه",
+      "source": "MultiSourceDiscoverySource",
+      "requested_category": "fashion",
+      "is_new_candidate": true,
+      "discovered_at": "2026-09-01T08:49:53.831986+00:00"
+    },
+    {
+      "username": "mobinashop",
+      "profile_url": "https://www.instagram.com/mobinashop/",
+      "query": "site:instagram.com \"فشن\" فروشگاه",
+      "source": "MultiSourceDiscoverySource",
+      "requested_category": "fashion",
+      "is_new_candidate": false,
+      "discovered_at": "2026-09-01T08:49:53.841327+00:00"
+    },
+    {
+      "username": "avanfashion.com_",
+      "profile_url": "https://www.instagram.com/avanfashion.com_/",
+      "query": "site:instagram.com \"فشن\" فروشگاه",
+      "source": "MultiSourceDiscoverySource",
+      "requested_category": "fashion",
+      "is_new_candidate": true,
+      "discovered_at": "2026-09-01T08:49:53.848386+00:00"
+    },
+    {
+      "username": "fashionshoes.ir",
+      "profile_url": "https://www.instagram.com/fashionshoes.ir/",
+      "query": "site:instagram.com \"فشن\" فروشگاه",
+      "source": "MultiSourceDiscoverySource",
+      "requested_category": "fashion",
+      "is_new_candidate": true,
+      "discovered_at": "2026-09-01T08:49:53.857726+00:00"
+    },
+    {
+      "username": "khanoumi_shop",
+      "profile_url": "https://www.instagram.com/khanoumi_shop/",
+      "query": "site:instagram.com \"فشن\" فروشگاه",
+      "source": "MultiSourceDiscoverySource",
+      "requested_category": "fashion",
+      "is_new_candidate": false,
+      "discovered_at": "2026-09-01T08:49:53.864988+00:00"
+    },
+    {
+      "username": "fashion_shop_ir",
+      "profile_url": "https://www.instagram.com/fashion_shop_ir/",
+      "query": "site:instagram.com \"فشن\" فروشگاه",
+      "source": "MultiSourceDiscoverySource",
+      "requested_category": "fashion",
+      "is_new_candidate": true,
+      "discovered_at": "2026-09-01T08:49:53.907246+00:00"
+    },
+    {
+      "username": "asalbanoo_shop",
+      "profile_url": "https://www.instagram.com/asalbanoo_shop/",
+      "query": "site:instagram.com \"فشن\" فروشگاه",
+      "source": "MultiSourceDiscoverySource",
+      "requested_category": "fashion",
+      "is_new_candidate": false,
+      "discovered_at": "2026-09-01T08:49:53.924913+00:00"
+    },
+    {
+      "username": "fashionstoor",
+      "profile_url": "https://www.instagram.com/fashionstoor/",
+      "query": "site:instagram.com \"فشن\" فروشگاه",
+      "source": "MultiSourceDiscoverySource",
+      "requested_category": "fashion",
+      "is_new_candidate": true,
+      "discovered_at": "2026-09-01T08:49:53.939840+00:00"
+    },
+    {
+      "username": "rojashop",
+      "profile_url": "https://www.instagram.com/rojashop/",
+      "query": "site:instagram.com \"فشن\" فروشگاه",
+      "source": "MultiSourceDiscoverySource",
+      "requested_category": "fashion",
+      "is_new_candidate": false,
+      "discovered_at": "2026-09-01T08:49:53.947122+00:00"
+    },
+    {
+      "username": "fashion.ir",
+      "profile_url": "https://www.instagram.com/fashion.ir/",
+      "query": "site:instagram.com \"فشن\" فروشگاه",
+      "source": "MultiSourceDiscoverySource",
+      "requested_category": "fashion",
+      "is_new_candidate": true,
+      "discovered_at": "2026-09-01T08:49:53.956249+00:00"
+    },
+    {
+      "username": "modiagecom",
+      "profile_url": "https://www.instagram.com/modiagecom/",
+      "query": "site:instagram.com \"فشن\" فروشگاه",
+      "source": "MultiSourceDiscoverySource",
+      "requested_category": "fashion",
+      "is_new_candidate": false,
+      "discovered_at": "2026-09-01T08:49:53.964226+00:00"
+    },
+    {
+      "username": "fashionshop_icemall",
+      "profile_url": "https://www.instagram.com/fashionshop_icemall/",
+      "query": "site:instagram.com \"فشن\" فروشگاه",
+      "source": "MultiSourceDiscoverySource",
+      "requested_category": "fashion",
+      "is_new_candidate": true,
+      "discovered_at": "2026-09-01T08:49:53.972392+00:00"
+    },
+    {
+      "username": "elanza.shop",
+      "profile_url": "https://www.instagram.com/elanza.shop/",
+      "query": "site:instagram.com \"فشن\" فروشگاه",
+      "source": "MultiSourceDiscoverySource",
+      "requested_category": "fashion",
+      "is_new_candidate": false,
+      "discovered_at": "2026-09-01T08:49:53.979219+00:00"
+    },
+    {
+      "username": "fashionstore.tehran",
+      "profile_url": "https://www.instagram.com/fashionstore.tehran/",
+      "query": "site:instagram.com \"فشن\" فروشگاه",
+      "source": "MultiSourceDiscoverySource",
+      "requested_category": "fashion",
+      "is_new_candidate": true,
+      "discovered_at": "2026-09-01T08:49:53.987594+00:00"
+    },
+    {
+      "username": "sindokht.store",
+      "profile_url": "https://www.instagram.com/sindokht.store/",
+      "query": "site:instagram.com \"فشن\" فروشگاه",
+      "source": "MultiSourceDiscoverySource",
+      "requested_category": "fashion",
+      "is_new_candidate": false,
+      "discovered_at": "2026-09-01T08:49:53.994805+00:00"
+    },
+    {
+      "username": "homehrshop",
+      "profile_url": "https://www.instagram.com/homehrshop/",
+      "query": "site:instagram.com \"فشن\" فروشگاه",
+      "source": "MultiSourceDiscoverySource",
+      "requested_category": "fashion",
+      "is_new_candidate": false,
+      "discovered_at": "2026-09-01T08:49:54.003885+00:00"
+    },
+    {
+      "username": "mootanroo",
+      "profile_url": "https://www.instagram.com/mootanroo/",
+      "query": "site:instagram.com \"فشن\" فروشگاه",
+      "source": "MultiSourceDiscoverySource",
+      "requested_category": "fashion",
+      "is_new_candidate": false,
+      "discovered_at": "2026-09-01T08:49:54.011183+00:00"
+    },
+    {
+      "username": "ga.th.er",
+      "profile_url": "https://www.instagram.com/ga.th.er/",
+      "query": "site:instagram.com \"فشن\" فروشگاه",
+      "source": "MultiSourceDiscoverySource",
+      "requested_category": "fashion",
+      "is_new_candidate": false,
+      "discovered_at": "2026-09-01T08:49:54.019865+00:00"
+    },
+    {
+      "username": "kiyanawears",
+      "profile_url": "https://www.instagram.com/kiyanawears/",
+      "query": "site:instagram.com \"فشن\" فروشگاه",
+      "source": "MultiSourceDiscoverySource",
+      "requested_category": "fashion",
+      "is_new_candidate": false,
+      "discovered_at": "2026-09-01T08:49:54.026463+00:00"
+    },
+    {
+      "username": "sarmostylee",
+      "profile_url": "https://www.instagram.com/sarmostylee/",
+      "query": "site:instagram.com \"استایل\" فروشگاه",
+      "source": "MultiSourceDiscoverySource",
+      "requested_category": "fashion",
+      "is_new_candidate": true,
+      "discovered_at": "2026-09-01T08:50:25.628154+00:00"
+    },
+    {
+      "username": "stileshop__boutique",
+      "profile_url": "https://www.instagram.com/stileshop__boutique/",
+      "query": "site:instagram.com \"استایل\" فروشگاه",
+      "source": "MultiSourceDiscoverySource",
+      "requested_category": "fashion",
+      "is_new_candidate": true,
+      "discovered_at": "2026-09-01T08:50:25.636260+00:00"
+    },
+    {
+      "username": "mertastyle",
+      "profile_url": "https://www.instagram.com/mertastyle/",
+      "query": "site:instagram.com \"استایل\" فروشگاه",
+      "source": "MultiSourceDiscoverySource",
+      "requested_category": "fashion",
+      "is_new_candidate": true,
+      "discovered_at": "2026-09-01T08:50:25.644175+00:00"
+    },
+    {
+      "username": "stock_marofi",
+      "profile_url": "https://www.instagram.com/stock_marofi/",
+      "query": "site:instagram.com \"استایل\" فروشگاه",
+      "source": "MultiSourceDiscoverySource",
+      "requested_category": "fashion",
+      "is_new_candidate": true,
+      "discovered_at": "2026-09-01T08:50:25.653520+00:00"
+    },
+    {
+      "username": "stylemens_wear",
+      "profile_url": "https://www.instagram.com/stylemens_wear/",
+      "query": "site:instagram.com \"استایل\" فروشگاه",
+      "source": "MultiSourceDiscoverySource",
+      "requested_category": "fashion",
+      "is_new_candidate": true,
+      "discovered_at": "2026-09-01T08:50:25.663615+00:00"
+    },
+    {
+      "username": "pile.style",
+      "profile_url": "https://www.instagram.com/pile.style/",
+      "query": "site:instagram.com \"استایل\" فروشگاه",
+      "source": "MultiSourceDiscoverySource",
+      "requested_category": "fashion",
+      "is_new_candidate": true,
+      "discovered_at": "2026-09-01T08:50:25.673018+00:00"
+    },
+    {
+      "username": "hirastylle",
+      "profile_url": "https://www.instagram.com/hirastylle/",
+      "query": "site:instagram.com \"استایل\" فروشگاه",
+      "source": "MultiSourceDiscoverySource",
+      "requested_category": "fashion",
+      "is_new_candidate": true,
+      "discovered_at": "2026-09-01T08:50:25.681591+00:00"
+    },
+    {
+      "username": "stayl.poshak",
+      "profile_url": "https://www.instagram.com/stayl.poshak/",
+      "query": "site:instagram.com \"استایل\" فروشگاه",
+      "source": "MultiSourceDiscoverySource",
+      "requested_category": "fashion",
+      "is_new_candidate": true,
+      "discovered_at": "2026-09-01T08:50:25.691845+00:00"
+    },
+    {
+      "username": "styliim",
+      "profile_url": "https://www.instagram.com/styliim/",
+      "query": "site:instagram.com \"استایل\" فروشگاه",
+      "source": "MultiSourceDiscoverySource",
+      "requested_category": "fashion",
+      "is_new_candidate": true,
+      "discovered_at": "2026-09-01T08:50:25.701042+00:00"
+    },
+    {
+      "username": "stayl_mood",
+      "profile_url": "https://www.instagram.com/stayl_mood/",
+      "query": "site:instagram.com \"استایل\" فروشگاه",
+      "source": "MultiSourceDiscoverySource",
+      "requested_category": "fashion",
+      "is_new_candidate": true,
+      "discovered_at": "2026-09-01T08:50:25.713315+00:00"
+    },
+    {
+      "username": "styleshoping.ir",
+      "profile_url": "https://www.instagram.com/styleshoping.ir/",
+      "query": "site:instagram.com \"استایل\" فروشگاه",
+      "source": "MultiSourceDiscoverySource",
+      "requested_category": "fashion",
+      "is_new_candidate": true,
+      "discovered_at": "2026-09-01T08:50:25.727038+00:00"
+    },
+    {
+      "username": "hiba.style_",
+      "profile_url": "https://www.instagram.com/hiba.style_/",
+      "query": "site:instagram.com \"استایل\" خرید",
+      "source": "MultiSourceDiscoverySource",
+      "requested_category": "fashion",
+      "is_new_candidate": true,
+      "discovered_at": "2026-09-01T08:50:49.864471+00:00"
+    }
+  ]
+}

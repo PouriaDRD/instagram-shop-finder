@@ -272,10 +272,16 @@ def test_success_resets_rate_limit_counter() -> None:
     second = session.fetch("second")
 
     assert first.username == "first"
+
     assert second.username == "second"
+
+    expected_pacing_delay = session._pacing_policy.delay_before_request(
+        request_number=2
+    )
 
     assert sleeps == [
         30.0,
+        expected_pacing_delay,
         30.0,
     ]
 
