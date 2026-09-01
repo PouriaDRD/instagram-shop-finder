@@ -2,9 +2,7 @@
 
 A Python-based tool for discovering, validating, filtering, and managing public Instagram shop profiles.
 
-The project is designed to find potential Instagram shops from public web sources, validate their public Instagram profile information, classify them by category, score commercial/shop signals, and store both discovered candidates and qualified profiles.
-
-Repository: https://github.com/PouriaDRD/instagram-shop-finder
+The project finds potential Instagram shops from public web sources, validates their public Instagram profile information, classifies them by category, evaluates commercial/shop signals, and stores both discovered candidates and qualified profiles.
 
 ---
 
@@ -17,12 +15,12 @@ Repository: https://github.com/PouriaDRD/instagram-shop-finder
 - Follower-based filtering
 - Minimum shop-score filtering
 - Candidate retry and status tracking
-- Persistent storage of candidates and qualified profiles
-- Temporary snapshots for the latest discovery and validation run
-- Safe data reset with automatic backup
+- Persistent storage for candidates and qualified profiles
+- Temporary snapshots for the latest discovery and validation runs
+- Safe data deletion with automatic backups
 - Persian RTL web dashboard
-- Interactive search and filtering in the dashboard
-- Local web server launch directly from the CLI menu
+- Interactive dashboard search and filtering
+- Dashboard launch directly from the CLI menu
 - Conservative crawling and rate-limit handling
 - Automated test suite
 
@@ -30,7 +28,7 @@ Repository: https://github.com/PouriaDRD/instagram-shop-finder
 
 ## Supported Categories
 
-The current profile categories are:
+The current categories are:
 
 - Beauty
 - Fashion
@@ -40,13 +38,13 @@ The current profile categories are:
 - Toys
 - Unknown
 
-Category detection is based on profile content and available discovery evidence.
+Classification is based on available public profile content and discovery evidence.
 
 ---
 
 ## How It Works
 
-The automatic discovery workflow has three main stages:
+The automatic discovery workflow follows this pipeline:
 
 ```text
 Search Filters
@@ -68,19 +66,19 @@ Qualified Profiles
 
 The application searches public web sources and directories for potential Instagram usernames.
 
-Every discovered username is stored immediately in:
+Every discovered candidate is immediately stored in:
 
 ```text
 data/candidates.json
 ```
 
-This means candidate information is preserved even if Instagram validation is interrupted later.
+This ensures that discovered usernames are preserved even if Instagram validation is interrupted later.
 
 ### 2. Instagram Validation
 
 Candidates are checked against publicly accessible Instagram profile information.
 
-The crawler extracts available information such as:
+Available profile data may include:
 
 - Username
 - Display name
@@ -89,18 +87,19 @@ The crawler extracts available information such as:
 - Following
 - Post count
 - External links
-- Public/private status
+- Public/private availability
 
-The application then determines:
+The application then evaluates:
 
 - Detected category
+- Category resolution
 - Shop score
-- Shop signals
-- Qualification status
+- Commercial signals
+- Final qualification status
 
 ### 3. Final Filtering
 
-Profiles can be filtered by criteria such as:
+Profiles can be filtered using criteria such as:
 
 - Category
 - Minimum followers
@@ -115,9 +114,7 @@ data/profiles.json
 
 ---
 
-## Data Files
-
-The project separates permanent storage from temporary run snapshots.
+## Data Storage
 
 ```text
 data/
@@ -131,11 +128,11 @@ data/
 
 ### `profiles.json`
 
-Stores profiles that passed the requested qualification filters.
+Permanent storage for profiles that pass the requested qualification filters.
 
 ### `candidates.json`
 
-Stores all discovered candidates and their processing history.
+Permanent storage for all discovered candidates and their processing history.
 
 Candidate statuses may include:
 
@@ -151,44 +148,15 @@ already_saved
 
 ### `latest_discovery.json`
 
-Contains only the results of the latest discovery run.
+Stores only the latest discovery run.
 
 It is overwritten when a new discovery starts.
 
 ### `latest_validation.json`
 
-Contains the validation results and summary of the latest run.
+Stores the latest Instagram validation results and summary.
 
-It is also overwritten by the next run.
-
----
-
-## Web Dashboard
-
-The project includes a local Persian web dashboard.
-
-The dashboard displays:
-
-- Stored profile count
-- Stored candidate count
-- Latest discovery results
-- Latest validation results
-- Matched and rejected profiles
-- Incomplete and failed profiles
-- Categories
-- Followers
-- Shop scores
-- Validation reasons
-
-Tables support filtering and search, and rows are visually separated for easier reading.
-
-The dashboard is read-only and does not modify stored data.
-
-Default address:
-
-```text
-http://127.0.0.1:8000
-```
+It is overwritten by the next run.
 
 ---
 
@@ -201,7 +169,7 @@ git clone https://github.com/PouriaDRD/instagram-shop-finder.git
 cd instagram-shop-finder
 ```
 
-Create a virtual environment:
+Create and activate a virtual environment.
 
 ### Windows
 
@@ -210,13 +178,13 @@ py -m venv .venv
 .venv\Scripts\activate
 ```
 
-Install dependencies:
+Install the required Python dependencies:
 
 ```bash
-pip install -e .
+pip install -r requirements.txt
 ```
 
-Install Playwright browser dependencies:
+Install the Chromium browser required by Playwright:
 
 ```bash
 playwright install chromium
@@ -226,83 +194,95 @@ playwright install chromium
 
 ## Running the Application
 
-Start the CLI:
+Start the main CLI:
 
 ```bash
 py main.py
 ```
 
-The menu provides access to the main project operations, including:
+The CLI provides access to the main project operations:
 
 ```text
-Find shops automatically
-Process profile manually
-Filter saved profiles
-Reprocess saved profiles
-Setup Instagram session
-Open web dashboard
-Delete stored data
-Exit
+1. Find shops automatically
+2. Process profile manually
+3. Filter saved profiles
+4. Reprocess saved profiles
+5. Setup Instagram session
+6. Open web dashboard
+7. Delete stored data
+8. Exit
 ```
 
 ---
 
-## Running the Dashboard Directly
+## Web Dashboard
 
-The web dashboard can also be started manually:
+The project includes a local Persian RTL dashboard for viewing discovered and validated profiles.
 
-```bash
-py -m app.web.server
-```
+The dashboard provides:
 
-Then open:
+- Overall candidate and profile statistics
+- Latest discovery results
+- Latest validation results
+- Match and rejection statuses
+- Follower counts
+- Shop scores
+- Category information
+- Validation reasons
+- Search and filtering
+- Direct Instagram profile links
+
+The dashboard is read-only and does not modify stored data.
+
+Default address:
 
 ```text
 http://127.0.0.1:8000
 ```
 
-When started through the CLI menu, the dashboard runs in a separate process and the browser is opened automatically.
+It can be opened directly from the CLI menu or started manually:
+
+```bash
+py -m app.web.server
+```
+
+When launched from the CLI, the web server runs in a separate process and the browser opens automatically.
 
 ---
 
 ## Safe Data Reset
 
-Stored data can be cleared from the CLI.
+Stored application data can be cleared from the CLI.
 
-Before any data is cleared, the application creates a backup inside:
+Before deletion, a timestamped backup is automatically created under:
 
 ```text
 data/backups/
 ```
 
-Example:
+A backup may contain:
 
 ```text
-data/backups/20260901_123945_123456/
-├── profiles.json
-├── candidates.json
-├── latest_discovery.json
-├── latest_validation.json
-└── manifest.json
+profiles.json
+candidates.json
+latest_discovery.json
+latest_validation.json
+manifest.json
 ```
 
-Deletion only proceeds when the user explicitly types:
+Deletion only proceeds after the user explicitly enters:
 
 ```text
 yes
 ```
 
-Any other input cancels the operation.
-
-Browser/session data and previous backups are not deleted.
+Existing backups and Instagram browser/session data are not removed.
 
 ---
 
 ## Follower Input Formats
 
-Follower filters support multiple formats.
-
-Examples:
+Follower filters support multiple formats:
 
 ```text
 10000
@@ -322,13 +302,17 @@ Examples:
 
 ## Crawling Behavior
 
-The Instagram crawler uses Playwright and only works with publicly accessible profile information.
+Instagram validation uses Playwright and works with publicly accessible profile information.
 
-The crawler includes conservative pacing and cooldown behavior to reduce unnecessary request pressure.
+The crawler includes:
 
-It also handles rate-limit situations and can stop processing when repeated rate limiting occurs.
+- Delays between profile requests
+- Batch cooldown periods
+- Rate-limit handling
+- Controlled retries
+- Session stopping after repeated rate limits
 
-The project does not rely on anti-bot bypasses, proxy rotation, CAPTCHA bypassing, or other access-control circumvention techniques.
+The project does not use CAPTCHA bypassing, proxy rotation, stealth techniques, or access-control circumvention.
 
 ---
 
@@ -346,19 +330,19 @@ Run a specific test module:
 pytest tests/test_web_server.py -v
 ```
 
-The project includes tests for areas such as:
+The test suite covers areas including:
 
 - Category classification
 - Category resolution
-- Profile filtering
 - Shop scoring
-- Follower parsing
-- Playwright profile parsing
-- Rate limiting
+- Follower input parsing
+- Profile filtering
+- Playwright profile extraction
 - Crawl pacing
+- Rate-limit handling
 - Candidate processing
-- Snapshot storage
-- Data backup/reset
+- Run snapshots
+- Backup and data reset
 - Web dashboard
 - Dashboard launcher
 
@@ -380,16 +364,28 @@ instagram-shop-finder/
 │   └── web/
 ├── data/
 ├── tests/
-├── main.py
-└── pyproject.toml
+├── LICENSE
+├── README.md
+├── requirements.txt
+└── main.py
 ```
 
 ---
 
-## Notes
+## Author
 
-Instagram availability depends on network access from the machine running the application.
+Developed by **Pouria Darandi**.
 
-The discovery stage uses public web sources and does not require Instagram access, while the Instagram validation stage requires access to public Instagram pages.
+## License
 
-The application is intended for responsible analysis of publicly available information.
+This project is licensed under the **MIT License**.
+
+See the `LICENSE` file in the project root for the full license text.
+
+---
+
+## Responsible Use
+
+This project is intended for responsible processing of publicly available information.
+
+Public-web discovery can run independently, while Instagram validation requires network access to public Instagram pages.
