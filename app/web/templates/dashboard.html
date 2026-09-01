@@ -1,0 +1,4394 @@
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+
+    <meta
+        name="viewport"
+        content="width=device-width, initial-scale=1.0"
+    >
+
+    <title>
+        پنل جستجوی فروشگاه‌های اینستاگرامی
+    </title>
+
+    <link
+        rel="preconnect"
+        href="https://fonts.googleapis.com"
+    >
+
+    <link
+        rel="preconnect"
+        href="https://fonts.gstatic.com"
+        crossorigin
+    >
+
+    <link
+        href="https://fonts.googleapis.com/css2?family=Vazirmatn:wght@400;500;600;700;800&display=swap"
+        rel="stylesheet"
+    >
+
+    <style>
+        :root {
+            --page-bg: #f7f8fc;
+
+            --surface: #ffffff;
+            --surface-secondary: #f8fafc;
+            --surface-tertiary: #f4f6fa;
+
+            --row-odd: #ffffff;
+            --row-even: #f8f9fd;
+            --row-hover: #f1f3ff;
+
+            --text-main: #182230;
+            --text-secondary: #5f6b7a;
+            --text-muted: #98a2b3;
+
+            --border: #e7eaf0;
+            --border-soft: #edf0f5;
+            --border-strong: #d9dee8;
+
+            --primary: #4f46e5;
+            --primary-hover: #4338ca;
+            --primary-soft: #eef2ff;
+
+            --green: #067647;
+            --green-soft: #ecfdf3;
+
+            --red: #b42318;
+            --red-soft: #fff1f0;
+
+            --orange: #b54708;
+            --orange-soft: #fff6ed;
+
+            --yellow: #a15c00;
+            --yellow-soft: #fffaeb;
+
+            --blue: #026aa2;
+            --blue-soft: #f0f9ff;
+
+            --purple: #6941c6;
+            --purple-soft: #f4f3ff;
+
+            --gray: #475467;
+            --gray-soft: #f2f4f7;
+
+            --radius-sm: 8px;
+            --radius-md: 11px;
+            --radius-lg: 15px;
+            --radius-xl: 19px;
+
+            --shadow-card:
+                0 1px 2px rgba(16, 24, 40, 0.02),
+                0 8px 24px rgba(16, 24, 40, 0.035);
+
+            --shadow-hover:
+                0 8px 26px rgba(79, 70, 229, 0.06);
+        }
+
+
+        * {
+            box-sizing: border-box;
+        }
+
+
+        html {
+            direction: rtl;
+        }
+
+
+        body {
+            margin: 0;
+
+            background:
+                linear-gradient(
+                    180deg,
+                    #fafbfe 0,
+                    var(--page-bg) 240px
+                );
+
+            color: var(--text-main);
+
+            font-family:
+                "Vazirmatn",
+                Tahoma,
+                Arial,
+                sans-serif;
+
+            font-size: 14px;
+            line-height: 1.65;
+
+            direction: rtl;
+        }
+
+
+        button,
+        input,
+        select {
+            font-family: inherit;
+        }
+
+
+        a {
+            color: inherit;
+        }
+
+
+        .page {
+            width: min(
+                1580px,
+                calc(100% - 48px)
+            );
+
+            margin: 0 auto;
+
+            padding:
+                34px
+                0
+                64px;
+        }
+
+
+        /* ===================================
+           HEADER
+        =================================== */
+
+        .page-header {
+            display: flex;
+
+            justify-content: space-between;
+            align-items: flex-start;
+
+            gap: 24px;
+
+            margin-bottom: 24px;
+        }
+
+
+        .page-heading {
+            min-width: 0;
+        }
+
+
+        .page-eyebrow {
+            display: inline-flex;
+
+            align-items: center;
+
+            gap: 7px;
+
+            margin-bottom: 7px;
+
+            color: var(--primary);
+
+            font-size: 11px;
+            font-weight: 700;
+        }
+
+
+        .eyebrow-dot {
+            width: 7px;
+            height: 7px;
+
+            border-radius: 50%;
+
+            background: var(--primary);
+
+            box-shadow:
+                0 0 0 4px
+                var(--primary-soft);
+        }
+
+
+        .page-title {
+            margin: 0;
+
+            font-size: 28px;
+            line-height: 1.35;
+            font-weight: 800;
+
+            letter-spacing: -0.7px;
+        }
+
+
+        .page-subtitle {
+            margin-top: 7px;
+
+            color: var(--text-secondary);
+
+            font-size: 13px;
+        }
+
+
+        .run-status {
+            display: flex;
+
+            align-items: center;
+
+            gap: 8px;
+
+            background: rgba(
+                255,
+                255,
+                255,
+                0.85
+            );
+
+            backdrop-filter: blur(8px);
+
+            border: 1px solid var(--border);
+
+            border-radius: 999px;
+
+            padding:
+                8px
+                12px;
+
+            box-shadow: var(--shadow-card);
+
+            color: var(--text-secondary);
+
+            font-size: 11px;
+            font-weight: 600;
+
+            white-space: nowrap;
+        }
+
+
+        .status-dot {
+            width: 8px;
+            height: 8px;
+
+            border-radius: 50%;
+
+            flex: 0 0 auto;
+        }
+
+
+        .status-dot-success {
+            background: #22c55e;
+
+            box-shadow:
+                0 0 0 3px
+                #dcfce7;
+        }
+
+
+        .status-dot-warning {
+            background: #f59e0b;
+
+            box-shadow:
+                0 0 0 3px
+                #fef3c7;
+        }
+
+
+        .status-dot-muted {
+            background: #94a3b8;
+
+            box-shadow:
+                0 0 0 3px
+                #f1f5f9;
+        }
+
+
+        /* ===================================
+           KPI CARDS
+        =================================== */
+
+        .stats-grid {
+            display: grid;
+
+            grid-template-columns:
+                repeat(
+                    4,
+                    minmax(
+                        0,
+                        1fr
+                    )
+                );
+
+            gap: 12px;
+
+            margin-bottom: 18px;
+        }
+
+
+        .stat-card {
+            position: relative;
+
+            display: flex;
+
+            align-items: center;
+            justify-content: space-between;
+
+            min-height: 92px;
+
+            overflow: hidden;
+
+            background: var(--surface);
+
+            border: 1px solid var(--border);
+
+            border-radius: var(--radius-lg);
+
+            padding:
+                15px
+                16px;
+
+            box-shadow: var(--shadow-card);
+
+            transition:
+                transform 0.15s ease,
+                box-shadow 0.15s ease,
+                border-color 0.15s ease;
+        }
+
+
+        .stat-card:hover {
+            transform: translateY(-1px);
+
+            border-color: #dfe3ec;
+
+            box-shadow: var(--shadow-hover);
+        }
+
+
+        .stat-content {
+            position: relative;
+
+            z-index: 2;
+        }
+
+
+        .stat-label {
+            margin-bottom: 6px;
+
+            color: var(--text-secondary);
+
+            font-size: 11px;
+            font-weight: 500;
+        }
+
+
+        .stat-value {
+            font-size: 26px;
+            line-height: 1.1;
+            font-weight: 800;
+
+            letter-spacing: -0.4px;
+        }
+
+
+        .stat-mark {
+            width: 38px;
+            height: 38px;
+
+            display: flex;
+
+            align-items: center;
+            justify-content: center;
+
+            border-radius: 12px;
+
+            font-size: 15px;
+            font-weight: 800;
+        }
+
+
+        .stat-primary .stat-mark {
+            background: var(--primary-soft);
+            color: var(--primary);
+        }
+
+
+        .stat-blue .stat-mark {
+            background: var(--blue-soft);
+            color: var(--blue);
+        }
+
+
+        .stat-green .stat-mark {
+            background: var(--green-soft);
+            color: var(--green);
+        }
+
+
+        .stat-red .stat-mark {
+            background: var(--red-soft);
+            color: var(--red);
+        }
+
+
+        .stat-yellow .stat-mark {
+            background: var(--yellow-soft);
+            color: var(--yellow);
+        }
+
+
+        .stat-gray .stat-mark {
+            background: var(--gray-soft);
+            color: var(--gray);
+        }
+
+
+        /* ===================================
+           LATEST RUN
+        =================================== */
+
+        .run-card {
+            background: var(--surface);
+
+            border: 1px solid var(--border);
+
+            border-radius: var(--radius-xl);
+
+            padding: 17px;
+
+            margin-bottom: 18px;
+
+            box-shadow: var(--shadow-card);
+        }
+
+
+        .section-heading {
+            display: flex;
+
+            align-items: center;
+            justify-content: space-between;
+
+            gap: 12px;
+
+            margin-bottom: 13px;
+        }
+
+
+        .section-title-wrap {
+            min-width: 0;
+        }
+
+
+        .section-title {
+            margin: 0;
+
+            font-size: 15px;
+            font-weight: 800;
+        }
+
+
+        .section-description {
+            margin-top: 2px;
+
+            color: var(--text-muted);
+
+            font-size: 10px;
+        }
+
+
+        .run-grid {
+            display: grid;
+
+            grid-template-columns:
+                repeat(
+                    4,
+                    minmax(
+                        0,
+                        1fr
+                    )
+                );
+
+            gap: 9px;
+        }
+
+
+        .run-item {
+            min-width: 0;
+
+            background: #fafbfc;
+
+            border:
+                1px solid
+                var(--border-soft);
+
+            border-radius: var(--radius-md);
+
+            padding:
+                10px
+                11px;
+        }
+
+
+        .run-item-label {
+            margin-bottom: 5px;
+
+            color: var(--text-muted);
+
+            font-size: 9px;
+            font-weight: 600;
+        }
+
+
+        .run-item-value {
+            min-height: 25px;
+
+            display: flex;
+
+            align-items: center;
+
+            font-size: 11px;
+            font-weight: 700;
+
+            overflow-wrap: anywhere;
+        }
+
+
+        /* ===================================
+           TABS
+        =================================== */
+
+        .tabs-shell {
+            display: flex;
+
+            align-items: center;
+
+            gap: 4px;
+
+            overflow-x: auto;
+
+            background: var(--surface);
+
+            border: 1px solid var(--border);
+
+            border-radius: var(--radius-lg);
+
+            padding: 5px;
+
+            margin-bottom: 12px;
+
+            box-shadow: var(--shadow-card);
+
+            scrollbar-width: none;
+        }
+
+
+        .tabs-shell::-webkit-scrollbar {
+            display: none;
+        }
+
+
+        .tab-button {
+            appearance: none;
+
+            border: 0;
+
+            border-radius: var(--radius-md);
+
+            background: transparent;
+
+            color: var(--text-secondary);
+
+            padding:
+                9px
+                14px;
+
+            cursor: pointer;
+
+            font-size: 11px;
+            font-weight: 700;
+
+            white-space: nowrap;
+
+            transition:
+                background 0.15s ease,
+                color 0.15s ease,
+                box-shadow 0.15s ease;
+        }
+
+
+        .tab-button:hover {
+            background: var(--surface-secondary);
+
+            color: var(--text-main);
+        }
+
+
+        .tab-button.active {
+            background: var(--primary);
+
+            color: #ffffff;
+
+            box-shadow:
+                0 3px 8px
+                rgba(
+                    79,
+                    70,
+                    229,
+                    0.18
+                );
+        }
+
+
+        .panel {
+            display: none;
+        }
+
+
+        .panel.active {
+            display: block;
+        }
+
+
+        /* ===================================
+           TABLE CONTAINER
+        =================================== */
+
+        .table-card {
+            overflow: hidden;
+
+            background: var(--surface);
+
+            border: 1px solid var(--border);
+
+            border-radius: var(--radius-xl);
+
+            box-shadow: var(--shadow-card);
+        }
+
+
+        .table-toolbar {
+            display: flex;
+
+            justify-content: space-between;
+            align-items: center;
+
+            gap: 14px;
+
+            padding:
+                15px
+                17px;
+
+            border-bottom:
+                1px solid
+                var(--border);
+        }
+
+
+        .table-title {
+            margin: 0;
+
+            font-size: 14px;
+            font-weight: 800;
+        }
+
+
+        .table-subtitle {
+            margin-top: 2px;
+
+            color: var(--text-muted);
+
+            font-size: 10px;
+        }
+
+
+        .table-count {
+            display: inline-flex;
+
+            align-items: center;
+
+            justify-content: center;
+
+            min-width: 66px;
+
+            background: var(--gray-soft);
+
+            border:
+                1px solid
+                #e7e9ee;
+
+            color: var(--gray);
+
+            border-radius: 999px;
+
+            padding:
+                4px
+                9px;
+
+            font-size: 10px;
+            font-weight: 700;
+
+            white-space: nowrap;
+        }
+
+
+        /* ===================================
+           FILTERS
+        =================================== */
+
+        .filters {
+            display: grid;
+
+            grid-template-columns:
+                minmax(
+                    230px,
+                    2fr
+                )
+                repeat(
+                    4,
+                    minmax(
+                        135px,
+                        1fr
+                    )
+                )
+                auto;
+
+            gap: 9px;
+
+            align-items: end;
+
+            padding:
+                12px
+                17px
+                13px;
+
+            background:
+                linear-gradient(
+                    180deg,
+                    #fcfdff,
+                    #fafbfc
+                );
+
+            border-bottom:
+                1px solid
+                var(--border);
+        }
+
+
+        .filter-group {
+            min-width: 0;
+        }
+
+
+        .filter-label {
+            display: block;
+
+            margin-bottom: 5px;
+
+            color: var(--text-secondary);
+
+            font-size: 9px;
+            font-weight: 600;
+        }
+
+
+        .filter-input,
+        .filter-select {
+            width: 100%;
+
+            height: 38px;
+
+            padding:
+                0
+                11px;
+
+            background: var(--surface);
+
+            border:
+                1px solid
+                var(--border-strong);
+
+            border-radius: var(--radius-md);
+
+            outline: 0;
+
+            color: var(--text-main);
+
+            font-size: 10px;
+
+            transition:
+                border-color 0.15s ease,
+                box-shadow 0.15s ease,
+                background 0.15s ease;
+        }
+
+
+        .filter-input:hover,
+        .filter-select:hover {
+            border-color: #cdd3df;
+        }
+
+
+        .filter-input:focus,
+        .filter-select:focus {
+            border-color: #818cf8;
+
+            box-shadow:
+                0 0 0 3px
+                rgba(
+                    79,
+                    70,
+                    229,
+                    0.08
+                );
+
+            background: #ffffff;
+        }
+
+
+        .filter-input::placeholder {
+            color: #b1b8c5;
+        }
+
+
+        .reset-button {
+            height: 38px;
+
+            padding:
+                0
+                12px;
+
+            border:
+                1px solid
+                var(--border-strong);
+
+            border-radius: var(--radius-md);
+
+            background: #ffffff;
+
+            color: var(--text-secondary);
+
+            cursor: pointer;
+
+            font-size: 10px;
+            font-weight: 700;
+
+            white-space: nowrap;
+
+            transition:
+                background 0.15s ease,
+                border-color 0.15s ease,
+                color 0.15s ease;
+        }
+
+
+        .reset-button:hover {
+            background: var(--gray-soft);
+
+            border-color: #ccd2de;
+
+            color: var(--text-main);
+        }
+
+
+        /* ===================================
+           TABLE
+        =================================== */
+
+        .table-wrapper {
+            position: relative;
+
+            width: 100%;
+
+            max-height: 720px;
+
+            overflow: auto;
+        }
+
+
+        table {
+            width: 100%;
+
+            min-width: 1250px;
+
+            border-collapse: separate;
+            border-spacing: 0;
+
+            table-layout: auto;
+        }
+
+
+        thead {
+            position: sticky;
+
+            top: 0;
+
+            z-index: 8;
+        }
+
+
+        th {
+            background: #f4f6fa;
+
+            color: #667085;
+
+            text-align: right;
+
+            padding:
+                10px
+                11px;
+
+            border-bottom:
+                1px solid
+                #dfe3ea;
+
+            font-size: 9px;
+            font-weight: 700;
+
+            white-space: nowrap;
+        }
+
+
+        td {
+            padding:
+                11px
+                11px;
+
+            border-bottom:
+                1px solid
+                var(--border-soft);
+
+            vertical-align: middle;
+
+            color: #344054;
+
+            font-size: 11px;
+
+            transition:
+                background 0.12s ease;
+        }
+
+
+        /*
+         * Zebra rows:
+         *
+         * row 1 = white
+         * row 2 = light
+         * row 3 = white
+         * row 4 = light
+         */
+
+        tbody tr:nth-child(odd) td {
+            background: var(--row-odd);
+        }
+
+
+        tbody tr:nth-child(even) td {
+            background: var(--row-even);
+        }
+
+
+        tbody tr:hover td {
+            background: var(--row-hover);
+        }
+
+
+        tbody tr:last-child td {
+            border-bottom: 0;
+        }
+
+
+        tbody tr.filtered-out {
+            display: none;
+        }
+
+
+        .row-number-head,
+        .row-number-cell {
+            width: 54px;
+
+            min-width: 54px;
+
+            max-width: 54px;
+
+            text-align: center;
+        }
+
+
+        .row-number {
+            display: inline-flex;
+
+            align-items: center;
+            justify-content: center;
+
+            min-width: 27px;
+            height: 25px;
+
+            padding:
+                0
+                6px;
+
+            background: #eef0f4;
+
+            border:
+                1px solid
+                #e1e5ec;
+
+            border-radius: 7px;
+
+            color: #667085;
+
+            font-size: 9px;
+            font-weight: 700;
+
+            font-variant-numeric:
+                tabular-nums;
+        }
+
+
+        tbody tr:hover .row-number {
+            background: #e4e7ff;
+
+            border-color: #d7dbff;
+
+            color: var(--primary);
+        }
+
+
+        /* ===================================
+           USERNAME
+        =================================== */
+
+        .username {
+            display: inline-flex;
+
+            align-items: center;
+
+            gap: 5px;
+
+            direction: ltr;
+
+            color: var(--primary);
+
+            font-weight: 700;
+
+            text-decoration: none;
+
+            white-space: nowrap;
+        }
+
+
+        .username::after {
+            content: "↗";
+
+            color: #a4a8b2;
+
+            font-size: 9px;
+        }
+
+
+        .username:hover {
+            color: var(--primary-hover);
+
+            text-decoration: underline;
+        }
+
+
+        /* ===================================
+           BADGES
+        =================================== */
+
+        .badge {
+            display: inline-flex;
+
+            align-items: center;
+            justify-content: center;
+
+            min-height: 24px;
+
+            padding:
+                3px
+                8px;
+
+            border:
+                1px solid
+                transparent;
+
+            border-radius: 999px;
+
+            font-size: 9px;
+            line-height: 1.35;
+            font-weight: 700;
+
+            white-space: nowrap;
+        }
+
+
+        .badge-primary {
+            background: var(--primary-soft);
+
+            border-color: #dde3ff;
+
+            color: var(--primary);
+        }
+
+
+        .badge-green {
+            background: var(--green-soft);
+
+            border-color: #d1fadf;
+
+            color: var(--green);
+        }
+
+
+        .badge-red {
+            background: var(--red-soft);
+
+            border-color: #fee4e2;
+
+            color: var(--red);
+        }
+
+
+        .badge-orange {
+            background: var(--orange-soft);
+
+            border-color: #ffead5;
+
+            color: var(--orange);
+        }
+
+
+        .badge-yellow {
+            background: var(--yellow-soft);
+
+            border-color: #fef0c7;
+
+            color: var(--yellow);
+        }
+
+
+        .badge-blue {
+            background: var(--blue-soft);
+
+            border-color: #e0f2fe;
+
+            color: var(--blue);
+        }
+
+
+        .badge-purple {
+            background: var(--purple-soft);
+
+            border-color: #e9d7fe;
+
+            color: var(--purple);
+        }
+
+
+        .badge-gray {
+            background: var(--gray-soft);
+
+            border-color: #e4e7ec;
+
+            color: var(--gray);
+        }
+
+
+        .number-badge {
+            font-variant-numeric:
+                tabular-nums;
+        }
+
+
+        /* ===================================
+           LONG CONTENT
+        =================================== */
+
+        .reason-cell {
+            width: 340px;
+            min-width: 280px;
+            max-width: 380px;
+
+            color: #5a6574;
+
+            line-height: 1.75;
+
+            white-space: normal;
+
+            overflow-wrap: anywhere;
+        }
+
+
+        .bio-cell {
+            width: 320px;
+            min-width: 260px;
+            max-width: 360px;
+
+            color: #5a6574;
+
+            line-height: 1.75;
+
+            white-space: normal;
+
+            overflow-wrap: anywhere;
+        }
+
+
+        .query-cell {
+            width: 300px;
+            min-width: 220px;
+            max-width: 340px;
+
+            color: #5a6574;
+
+            line-height: 1.7;
+
+            white-space: normal;
+
+            overflow-wrap: anywhere;
+        }
+
+
+        .ltr {
+            direction: ltr;
+        }
+
+
+        .ltr-badge {
+            direction: ltr;
+
+            unicode-bidi: isolate;
+        }
+
+
+        /* ===================================
+           EMPTY STATE
+        =================================== */
+
+        .empty-state,
+        .filtered-empty {
+            padding:
+                42px
+                20px;
+
+            text-align: center;
+
+            color: var(--text-muted);
+
+            font-size: 11px;
+        }
+
+
+        .empty-state-title {
+            margin-bottom: 4px;
+
+            color: var(--text-secondary);
+
+            font-size: 13px;
+            font-weight: 700;
+        }
+
+
+        .filtered-empty {
+            display: none;
+        }
+
+
+        .filtered-empty.visible {
+            display: block;
+        }
+
+
+        /* ===================================
+           RESPONSIVE
+        =================================== */
+
+        @media (
+            max-width: 1180px
+        ) {
+            .stats-grid {
+                grid-template-columns:
+                    repeat(
+                        2,
+                        minmax(
+                            0,
+                            1fr
+                        )
+                    );
+            }
+
+
+            .run-grid {
+                grid-template-columns:
+                    repeat(
+                        2,
+                        minmax(
+                            0,
+                            1fr
+                        )
+                    );
+            }
+
+
+            .filters {
+                grid-template-columns:
+                    repeat(
+                        3,
+                        minmax(
+                            0,
+                            1fr
+                        )
+                    );
+            }
+        }
+
+
+        @media (
+            max-width: 720px
+        ) {
+            .page {
+                width:
+                    calc(
+                        100% - 24px
+                    );
+
+                padding-top: 20px;
+            }
+
+
+            .page-header {
+                flex-direction: column;
+            }
+
+
+            .page-title {
+                font-size: 22px;
+            }
+
+
+            .stats-grid,
+            .run-grid,
+            .filters {
+                grid-template-columns: 1fr;
+            }
+
+
+            .stat-card {
+                min-height: 80px;
+            }
+
+
+            .table-toolbar {
+                align-items: flex-start;
+            }
+        }
+    </style>
+</head>
+
+
+<body>
+
+
+{% macro category_badge(category) %}
+
+    {% if category == "beauty" %}
+        <span class="badge badge-purple">
+            زیبایی
+        </span>
+
+    {% elif category == "fashion" %}
+        <span class="badge badge-primary">
+            فشن
+        </span>
+
+    {% elif category == "clothing" %}
+        <span class="badge badge-blue">
+            پوشاک
+        </span>
+
+    {% elif category == "home" %}
+        <span class="badge badge-orange">
+            خانه
+        </span>
+
+    {% elif category == "accessories" %}
+        <span class="badge badge-yellow">
+            اکسسوری
+        </span>
+
+    {% elif category == "toys" %}
+        <span class="badge badge-green">
+            اسباب‌بازی
+        </span>
+
+    {% elif category == "unknown" %}
+        <span class="badge badge-gray">
+            نامشخص
+        </span>
+
+    {% elif category %}
+        <span class="badge badge-gray">
+            {{ category }}
+        </span>
+
+    {% else %}
+        <span class="badge badge-gray">
+            -
+        </span>
+    {% endif %}
+
+{% endmacro %}
+
+
+{% macro confidence_badge(value) %}
+
+    {% if value == "confirmed" %}
+        <span class="badge badge-green">
+            قطعی
+        </span>
+
+    {% elif value == "probable" %}
+        <span class="badge badge-yellow">
+            محتمل
+        </span>
+
+    {% elif value == "conflict" %}
+        <span class="badge badge-red">
+            متناقض
+        </span>
+
+    {% elif value == "unknown" %}
+        <span class="badge badge-gray">
+            نامشخص
+        </span>
+
+    {% elif value %}
+        <span class="badge badge-gray">
+            {{ value }}
+        </span>
+
+    {% else %}
+        <span class="badge badge-gray">
+            -
+        </span>
+    {% endif %}
+
+{% endmacro %}
+
+
+{% macro shop_badge(value) %}
+
+    {% if value is true %}
+        <span class="badge badge-green">
+            فروشگاه
+        </span>
+
+    {% elif value is false %}
+        <span class="badge badge-red">
+            غیرفروشگاهی
+        </span>
+
+    {% else %}
+        <span class="badge badge-yellow">
+            نامشخص
+        </span>
+    {% endif %}
+
+{% endmacro %}
+
+
+{% macro result_badge(value) %}
+
+    {% if value == "matched" %}
+        <span class="badge badge-green">
+            تاییدشده
+        </span>
+
+    {% elif value == "rejected" %}
+        <span class="badge badge-red">
+            ردشده
+        </span>
+
+    {% elif value == "incomplete" %}
+        <span class="badge badge-yellow">
+            اطلاعات ناقص
+        </span>
+
+    {% elif value == "fetch_failed" %}
+        <span class="badge badge-orange">
+            خطای دریافت
+        </span>
+
+    {% elif value == "rate_limited" %}
+        <span class="badge badge-orange">
+            محدودیت اینستاگرام
+        </span>
+
+    {% elif value == "already_saved" %}
+        <span class="badge badge-primary">
+            قبلاً ذخیره‌شده
+        </span>
+
+    {% elif value == "non_iranian" %}
+        <span class="badge badge-gray">
+            غیرایرانی
+        </span>
+
+    {% elif value == "new" %}
+        <span class="badge badge-blue">
+            جدید
+        </span>
+
+    {% elif value %}
+        <span class="badge badge-gray">
+            {{ value }}
+        </span>
+
+    {% else %}
+        <span class="badge badge-gray">
+            -
+        </span>
+    {% endif %}
+
+{% endmacro %}
+
+
+{% macro origin_badge(value) %}
+
+    {% if value == "current_discovery" %}
+        <span class="badge badge-blue">
+            جستجوی فعلی
+        </span>
+
+    {% elif value == "retry_pending" %}
+        <span class="badge badge-yellow">
+            بررسی مجدد
+        </span>
+
+    {% elif value %}
+        <span class="badge badge-gray">
+            {{ value }}
+        </span>
+
+    {% else %}
+        <span class="badge badge-gray">
+            -
+        </span>
+    {% endif %}
+
+{% endmacro %}
+
+
+{% macro evidence_badge(value) %}
+
+    {% if value == "classifier" %}
+        <span class="badge badge-purple">
+            طبقه‌بندی
+        </span>
+
+    {% elif value == "current_run" %}
+        <span class="badge badge-blue">
+            جستجوی فعلی
+        </span>
+
+    {% elif value == "retry_origin" %}
+        <span class="badge badge-yellow">
+            شواهد بررسی قبلی
+        </span>
+
+    {% elif value %}
+        <span class="badge badge-gray">
+            {{ value }}
+        </span>
+
+    {% else %}
+        <span class="badge badge-gray">
+            -
+        </span>
+    {% endif %}
+
+{% endmacro %}
+
+
+<div class="page">
+
+
+    <!-- ===================================
+         HEADER
+    ==================================== -->
+
+    <header class="page-header">
+
+        <div class="page-heading">
+
+            <div class="page-eyebrow">
+
+                <span class="eyebrow-dot"></span>
+
+                Instagram Shop Finder
+
+            </div>
+
+            <h1 class="page-title">
+                پنل جستجوی فروشگاه‌های اینستاگرامی
+            </h1>
+
+            <div class="page-subtitle">
+                مشاهده، بررسی و فیلتر نتایج کشف و اعتبارسنجی فروشگاه‌ها
+            </div>
+
+        </div>
+
+
+        <div class="run-status">
+
+            {% if latest_validation.get("completed") %}
+
+                <span
+                    class="
+                        status-dot
+                        status-dot-success
+                    "
+                ></span>
+
+                آخرین اجرا با موفقیت تکمیل شده
+
+            {% elif latest_validation %}
+
+                <span
+                    class="
+                        status-dot
+                        status-dot-warning
+                    "
+                ></span>
+
+                آخرین اجرا ناقص یا متوقف شده
+
+            {% else %}
+
+                <span
+                    class="
+                        status-dot
+                        status-dot-muted
+                    "
+                ></span>
+
+                هنوز اجرایی ثبت نشده
+
+            {% endif %}
+
+        </div>
+
+    </header>
+
+
+    <!-- ===================================
+         STATS
+    ==================================== -->
+
+    <section class="stats-grid">
+
+        <div class="stat-card stat-primary">
+
+            <div class="stat-content">
+
+                <div class="stat-label">
+                    پروفایل‌های ذخیره‌شده
+                </div>
+
+                <div class="stat-value">
+                    {{ stats.profiles|number }}
+                </div>
+
+            </div>
+
+            <div class="stat-mark">
+                P
+            </div>
+
+        </div>
+
+
+        <div class="stat-card stat-blue">
+
+            <div class="stat-content">
+
+                <div class="stat-label">
+                    کاندیدهای ذخیره‌شده
+                </div>
+
+                <div class="stat-value">
+                    {{ stats.candidates|number }}
+                </div>
+
+            </div>
+
+            <div class="stat-mark">
+                C
+            </div>
+
+        </div>
+
+
+        <div class="stat-card stat-gray">
+
+            <div class="stat-content">
+
+                <div class="stat-label">
+                    کاندیدهای آخرین جستجو
+                </div>
+
+                <div class="stat-value">
+                    {{ stats.latest_discovered|number }}
+                </div>
+
+            </div>
+
+            <div class="stat-mark">
+                D
+            </div>
+
+        </div>
+
+
+        <div class="stat-card stat-blue">
+
+            <div class="stat-content">
+
+                <div class="stat-label">
+                    بررسی‌شده در آخرین اجرا
+                </div>
+
+                <div class="stat-value">
+                    {{ stats.latest_processed|number }}
+                </div>
+
+            </div>
+
+            <div class="stat-mark">
+                V
+            </div>
+
+        </div>
+
+
+        <div class="stat-card stat-green">
+
+            <div class="stat-content">
+
+                <div class="stat-label">
+                    تاییدشده
+                </div>
+
+                <div class="stat-value">
+                    {{ stats.matched|number }}
+                </div>
+
+            </div>
+
+            <div class="stat-mark">
+                ✓
+            </div>
+
+        </div>
+
+
+        <div class="stat-card stat-red">
+
+            <div class="stat-content">
+
+                <div class="stat-label">
+                    ردشده
+                </div>
+
+                <div class="stat-value">
+                    {{ stats.rejected|number }}
+                </div>
+
+            </div>
+
+            <div class="stat-mark">
+                ×
+            </div>
+
+        </div>
+
+
+        <div class="stat-card stat-yellow">
+
+            <div class="stat-content">
+
+                <div class="stat-label">
+                    اطلاعات ناقص
+                </div>
+
+                <div class="stat-value">
+                    {{ stats.incomplete|number }}
+                </div>
+
+            </div>
+
+            <div class="stat-mark">
+                !
+            </div>
+
+        </div>
+
+
+        <div class="stat-card stat-yellow">
+
+            <div class="stat-content">
+
+                <div class="stat-label">
+                    خطای دریافت
+                </div>
+
+                <div class="stat-value">
+                    {{ stats.fetch_failed|number }}
+                </div>
+
+            </div>
+
+            <div class="stat-mark">
+                !
+            </div>
+
+        </div>
+
+    </section>
+
+
+    <!-- ===================================
+         LAST RUN
+    ==================================== -->
+
+    {% if latest_validation %}
+
+        {% set filters =
+            latest_validation.get(
+                "filters",
+                {}
+            )
+        %}
+
+        <section class="run-card">
+
+            <div class="section-heading">
+
+                <div class="section-title-wrap">
+
+                    <h2 class="section-title">
+                        مشخصات آخرین اجرا
+                    </h2>
+
+                    <div class="section-description">
+                        پارامترهایی که آخرین جستجو و اعتبارسنجی با آن‌ها اجرا شده
+                    </div>
+
+                </div>
+
+            </div>
+
+
+            <div class="run-grid">
+
+                <div class="run-item">
+
+                    <div class="run-item-label">
+                        دسته‌بندی
+                    </div>
+
+                    <div class="run-item-value">
+                        {{
+                            category_badge(
+                                latest_validation.get(
+                                    "category"
+                                )
+                            )
+                        }}
+                    </div>
+
+                </div>
+
+
+                <div class="run-item">
+
+                    <div class="run-item-label">
+                        حداقل فالوور
+                    </div>
+
+                    <div class="run-item-value">
+
+                        <span class="badge badge-gray number-badge">
+                            {{
+                                filters.get(
+                                    "min_followers"
+                                )
+                                |number
+                            }}
+                        </span>
+
+                    </div>
+
+                </div>
+
+
+                <div class="run-item">
+
+                    <div class="run-item-label">
+                        حداکثر فالوور
+                    </div>
+
+                    <div class="run-item-value">
+
+                        <span class="badge badge-gray number-badge">
+                            {{
+                                filters.get(
+                                    "max_followers"
+                                )
+                                |number
+                            }}
+                        </span>
+
+                    </div>
+
+                </div>
+
+
+                <div class="run-item">
+
+                    <div class="run-item-label">
+                        حداقل امتیاز فروشگاه
+                    </div>
+
+                    <div class="run-item-value">
+
+                        <span class="badge badge-primary number-badge">
+                            {{
+                                filters.get(
+                                    "min_shop_score"
+                                )
+                                |score
+                            }}
+                        </span>
+
+                    </div>
+
+                </div>
+
+
+                <div class="run-item">
+
+                    <div class="run-item-label">
+                        تعداد هدف
+                    </div>
+
+                    <div class="run-item-value">
+
+                        <span class="badge badge-blue number-badge">
+                            {{
+                                filters.get(
+                                    "target_results"
+                                )
+                                |number
+                            }}
+                        </span>
+
+                    </div>
+
+                </div>
+
+
+                <div class="run-item">
+
+                    <div class="run-item-label">
+                        شناسه اجرا
+                    </div>
+
+                    <div class="run-item-value ltr">
+                        {{
+                            latest_validation.get(
+                                "run_id",
+                                "-"
+                            )
+                        }}
+                    </div>
+
+                </div>
+
+
+                <div class="run-item">
+
+                    <div class="run-item-label">
+                        زمان شروع
+                    </div>
+
+                    <div class="run-item-value ltr">
+                        {{
+                            latest_validation.get(
+                                "started_at",
+                                "-"
+                            )
+                        }}
+                    </div>
+
+                </div>
+
+
+                <div class="run-item">
+
+                    <div class="run-item-label">
+                        وضعیت توقف
+                    </div>
+
+                    <div class="run-item-value">
+
+                        {% if latest_validation.get("stop_reason") %}
+
+                            <span class="badge badge-orange">
+                                {{
+                                    latest_validation.get(
+                                        "stop_reason"
+                                    )
+                                }}
+                            </span>
+
+                        {% else %}
+
+                            <span class="badge badge-green">
+                                بدون توقف
+                            </span>
+
+                        {% endif %}
+
+                    </div>
+
+                </div>
+
+            </div>
+
+        </section>
+
+    {% endif %}
+
+
+    <!-- ===================================
+         TABS
+    ==================================== -->
+
+    <nav class="tabs-shell">
+
+        <button
+            type="button"
+            class="tab-button active"
+            data-tab="validation"
+        >
+            اعتبارسنجی آخر
+        </button>
+
+        <button
+            type="button"
+            class="tab-button"
+            data-tab="discovery"
+        >
+            نتایج آخرین جستجو
+        </button>
+
+        <button
+            type="button"
+            class="tab-button"
+            data-tab="profiles"
+        >
+            پروفایل‌های ذخیره‌شده
+        </button>
+
+        <button
+            type="button"
+            class="tab-button"
+            data-tab="candidates"
+        >
+            همه کاندیدها
+        </button>
+
+    </nav>
+
+
+    <!-- ===================================
+         VALIDATION
+    ==================================== -->
+
+    {% set validation_results =
+        latest_validation.get(
+            "results",
+            []
+        )
+    %}
+
+    <section
+        class="panel active"
+        id="panel-validation"
+    >
+
+        <div
+            class="
+                table-card
+                filterable-panel
+            "
+        >
+
+            <div class="table-toolbar">
+
+                <div>
+
+                    <h2 class="table-title">
+                        نتایج اعتبارسنجی آخر
+                    </h2>
+
+                    <div class="table-subtitle">
+                        خروجی بررسی پروفایل‌های آخرین اجرا
+                    </div>
+
+                </div>
+
+
+                <div class="table-count">
+
+                    <span data-visible-count>
+                        {{ validation_results|length }}
+                    </span>
+
+                    &nbsp;مورد
+
+                </div>
+
+            </div>
+
+
+            <div class="filters">
+
+                <div class="filter-group">
+
+                    <label class="filter-label">
+                        جستجو
+                    </label>
+
+                    <input
+                        class="filter-input"
+                        type="text"
+                        placeholder="نام کاربری، دلیل رد یا دسته‌بندی"
+                        data-filter-search
+                    >
+
+                </div>
+
+
+                <div class="filter-group">
+
+                    <label class="filter-label">
+                        نتیجه
+                    </label>
+
+                    <select
+                        class="filter-select"
+                        data-filter-result
+                    >
+
+                        <option value="">
+                            همه
+                        </option>
+
+                        <option value="matched">
+                            تاییدشده
+                        </option>
+
+                        <option value="rejected">
+                            ردشده
+                        </option>
+
+                        <option value="incomplete">
+                            ناقص
+                        </option>
+
+                        <option value="fetch_failed">
+                            خطای دریافت
+                        </option>
+
+                        <option value="already_saved">
+                            قبلاً ذخیره‌شده
+                        </option>
+
+                        <option value="rate_limited">
+                            محدودیت اینستاگرام
+                        </option>
+
+                    </select>
+
+                </div>
+
+
+                <div class="filter-group">
+
+                    <label class="filter-label">
+                        دسته‌بندی
+                    </label>
+
+                    <select
+                        class="filter-select"
+                        data-filter-category
+                    >
+
+                        <option value="">
+                            همه
+                        </option>
+
+                        <option value="beauty">
+                            زیبایی
+                        </option>
+
+                        <option value="fashion">
+                            فشن
+                        </option>
+
+                        <option value="clothing">
+                            پوشاک
+                        </option>
+
+                        <option value="home">
+                            خانه
+                        </option>
+
+                        <option value="accessories">
+                            اکسسوری
+                        </option>
+
+                        <option value="toys">
+                            اسباب‌بازی
+                        </option>
+
+                        <option value="unknown">
+                            نامشخص
+                        </option>
+
+                    </select>
+
+                </div>
+
+
+                <div class="filter-group">
+
+                    <label class="filter-label">
+                        حداقل فالوور
+                    </label>
+
+                    <input
+                        class="filter-input"
+                        type="number"
+                        min="0"
+                        placeholder="10000"
+                        data-filter-min-followers
+                    >
+
+                </div>
+
+
+                <div class="filter-group">
+
+                    <label class="filter-label">
+                        حداقل امتیاز %
+                    </label>
+
+                    <input
+                        class="filter-input"
+                        type="number"
+                        min="0"
+                        max="100"
+                        placeholder="50"
+                        data-filter-min-score
+                    >
+
+                </div>
+
+
+                <button
+                    type="button"
+                    class="reset-button"
+                    data-reset-filters
+                >
+                    پاک کردن فیلترها
+                </button>
+
+            </div>
+
+
+            {% if validation_results %}
+
+                <div class="table-wrapper">
+
+                    <table>
+
+                        <thead>
+
+                            <tr>
+
+                                <th class="row-number-head">
+                                    ردیف
+                                </th>
+
+                                <th>
+                                    نام کاربری
+                                </th>
+
+                                <th>
+                                    نتیجه
+                                </th>
+
+                                <th>
+                                    فالوور
+                                </th>
+
+                                <th>
+                                    دسته تشخیص
+                                </th>
+
+                                <th>
+                                    دسته نهایی
+                                </th>
+
+                                <th>
+                                    اطمینان
+                                </th>
+
+                                <th>
+                                    امتیاز
+                                </th>
+
+                                <th>
+                                    نوع حساب
+                                </th>
+
+                                <th>
+                                    منبع ورود
+                                </th>
+
+                                <th>
+                                    نوع شواهد
+                                </th>
+
+                                <th>
+                                    دلیل
+                                </th>
+
+                            </tr>
+
+                        </thead>
+
+
+                        <tbody>
+
+                        {% for item in validation_results %}
+
+                            <tr
+                                data-filter-row
+
+                                data-result="{{
+                                    item.get(
+                                        'result'
+                                    )
+                                    or ''
+                                }}"
+
+                                data-category="{{
+                                    item.get(
+                                        'resolved_category'
+                                    )
+                                    or
+                                    item.get(
+                                        'detected_category'
+                                    )
+                                    or ''
+                                }}"
+
+                                data-followers="{{
+                                    item.get(
+                                        'followers_count'
+                                    )
+                                    or 0
+                                }}"
+
+                                data-score="{{
+                                    item.get(
+                                        'shop_score'
+                                    )
+                                    or 0
+                                }}"
+
+                                data-search-text="
+                                    {{
+                                        item.get(
+                                            'username'
+                                        )
+                                        or ''
+                                    }}
+                                    {{
+                                        item.get(
+                                            'result'
+                                        )
+                                        or ''
+                                    }}
+                                    {{
+                                        item.get(
+                                            'detected_category'
+                                        )
+                                        or ''
+                                    }}
+                                    {{
+                                        item.get(
+                                            'resolved_category'
+                                        )
+                                        or ''
+                                    }}
+                                    {{
+                                        item.get(
+                                            'reason'
+                                        )
+                                        or ''
+                                    }}
+                                "
+                            >
+
+                                <td class="row-number-cell">
+
+                                    <span class="row-number">
+                                        {{ loop.index }}
+                                    </span>
+
+                                </td>
+
+
+                                <td>
+
+                                    <a
+                                        class="username"
+                                        href="{{
+                                            item.get(
+                                                'profile_url'
+                                            )
+                                        }}"
+                                        target="_blank"
+                                        rel="noopener noreferrer"
+                                    >
+                                        @{{
+                                            item.get(
+                                                "username"
+                                            )
+                                        }}
+                                    </a>
+
+                                </td>
+
+
+                                <td>
+                                    {{
+                                        result_badge(
+                                            item.get(
+                                                "result"
+                                            )
+                                        )
+                                    }}
+                                </td>
+
+
+                                <td>
+
+                                    <span class="badge badge-gray number-badge">
+                                        {{
+                                            item.get(
+                                                "followers_count"
+                                            )
+                                            |number
+                                        }}
+                                    </span>
+
+                                </td>
+
+
+                                <td>
+                                    {{
+                                        category_badge(
+                                            item.get(
+                                                "detected_category"
+                                            )
+                                        )
+                                    }}
+                                </td>
+
+
+                                <td>
+                                    {{
+                                        category_badge(
+                                            item.get(
+                                                "resolved_category"
+                                            )
+                                        )
+                                    }}
+                                </td>
+
+
+                                <td>
+                                    {{
+                                        confidence_badge(
+                                            item.get(
+                                                "category_confidence"
+                                            )
+                                        )
+                                    }}
+                                </td>
+
+
+                                <td>
+
+                                    <span class="badge badge-primary number-badge">
+                                        {{
+                                            item.get(
+                                                "shop_score"
+                                            )
+                                            |score
+                                        }}
+                                    </span>
+
+                                </td>
+
+
+                                <td>
+                                    {{
+                                        shop_badge(
+                                            item.get(
+                                                "is_shop"
+                                            )
+                                        )
+                                    }}
+                                </td>
+
+
+                                <td>
+                                    {{
+                                        origin_badge(
+                                            item.get(
+                                                "origin"
+                                            )
+                                        )
+                                    }}
+                                </td>
+
+
+                                <td>
+                                    {{
+                                        evidence_badge(
+                                            item.get(
+                                                "evidence_source"
+                                            )
+                                        )
+                                    }}
+                                </td>
+
+
+                                <td class="reason-cell">
+                                    {{
+                                        item.get(
+                                            "reason"
+                                        )
+                                        or "-"
+                                    }}
+                                </td>
+
+                            </tr>
+
+                        {% endfor %}
+
+                        </tbody>
+
+                    </table>
+
+                </div>
+
+
+                <div class="filtered-empty">
+                    هیچ نتیجه‌ای با این فیلترها پیدا نشد.
+                </div>
+
+            {% else %}
+
+                <div class="empty-state">
+
+                    <div class="empty-state-title">
+                        هنوز نتیجه‌ای وجود ندارد
+                    </div>
+
+                    بعد از اجرای اعتبارسنجی، نتایج در این بخش نمایش داده می‌شوند.
+
+                </div>
+
+            {% endif %}
+
+        </div>
+
+    </section>
+
+
+    <!-- ===================================
+         DISCOVERY
+    ==================================== -->
+
+    {% set discovery_items =
+        latest_discovery.get(
+            "candidates",
+            []
+        )
+    %}
+
+    <section
+        class="panel"
+        id="panel-discovery"
+    >
+
+        <div
+            class="
+                table-card
+                filterable-panel
+            "
+        >
+
+            <div class="table-toolbar">
+
+                <div>
+
+                    <h2 class="table-title">
+                        کاندیدهای آخرین جستجو
+                    </h2>
+
+                    <div class="table-subtitle">
+                        همه نام‌های کاربری کشف‌شده در آخرین Discovery
+                    </div>
+
+                </div>
+
+
+                <div class="table-count">
+
+                    <span data-visible-count>
+                        {{ discovery_items|length }}
+                    </span>
+
+                    &nbsp;مورد
+
+                </div>
+
+            </div>
+
+
+            <div class="filters">
+
+                <div class="filter-group">
+
+                    <label class="filter-label">
+                        جستجو
+                    </label>
+
+                    <input
+                        class="filter-input"
+                        type="text"
+                        placeholder="نام کاربری، عبارت جستجو یا منبع"
+                        data-filter-search
+                    >
+
+                </div>
+
+
+                <div class="filter-group">
+
+                    <label class="filter-label">
+                        وضعیت
+                    </label>
+
+                    <select
+                        class="filter-select"
+                        data-filter-new
+                    >
+
+                        <option value="">
+                            همه
+                        </option>
+
+                        <option value="new">
+                            جدید
+                        </option>
+
+                        <option value="known">
+                            قبلی
+                        </option>
+
+                    </select>
+
+                </div>
+
+
+                <div class="filter-group">
+
+                    <label class="filter-label">
+                        دسته‌بندی
+                    </label>
+
+                    <select
+                        class="filter-select"
+                        data-filter-category
+                    >
+
+                        <option value="">
+                            همه
+                        </option>
+
+                        <option value="beauty">
+                            زیبایی
+                        </option>
+
+                        <option value="fashion">
+                            فشن
+                        </option>
+
+                        <option value="clothing">
+                            پوشاک
+                        </option>
+
+                        <option value="home">
+                            خانه
+                        </option>
+
+                        <option value="accessories">
+                            اکسسوری
+                        </option>
+
+                        <option value="toys">
+                            اسباب‌بازی
+                        </option>
+
+                    </select>
+
+                </div>
+
+
+                <button
+                    type="button"
+                    class="reset-button"
+                    data-reset-filters
+                >
+                    پاک کردن فیلترها
+                </button>
+
+            </div>
+
+
+            {% if discovery_items %}
+
+                <div class="table-wrapper">
+
+                    <table>
+
+                        <thead>
+
+                            <tr>
+
+                                <th class="row-number-head">
+                                    ردیف
+                                </th>
+
+                                <th>
+                                    نام کاربری
+                                </th>
+
+                                <th>
+                                    وضعیت
+                                </th>
+
+                                <th>
+                                    دسته‌بندی
+                                </th>
+
+                                <th>
+                                    منبع
+                                </th>
+
+                                <th>
+                                    عبارت جستجو
+                                </th>
+
+                                <th>
+                                    زمان کشف
+                                </th>
+
+                            </tr>
+
+                        </thead>
+
+
+                        <tbody>
+
+                        {% for item in discovery_items %}
+
+                            <tr
+                                data-filter-row
+
+                                data-new-status="{%
+                                    if
+                                    item.get(
+                                        'is_new_candidate'
+                                    )
+                                %}new{%
+                                    else
+                                %}known{%
+                                    endif
+                                %}"
+
+                                data-category="{{
+                                    item.get(
+                                        'requested_category'
+                                    )
+                                    or ''
+                                }}"
+
+                                data-search-text="
+                                    {{
+                                        item.get(
+                                            'username'
+                                        )
+                                        or ''
+                                    }}
+                                    {{
+                                        item.get(
+                                            'query'
+                                        )
+                                        or ''
+                                    }}
+                                    {{
+                                        item.get(
+                                            'source'
+                                        )
+                                        or ''
+                                    }}
+                                "
+                            >
+
+                                <td class="row-number-cell">
+
+                                    <span class="row-number">
+                                        {{ loop.index }}
+                                    </span>
+
+                                </td>
+
+
+                                <td>
+
+                                    <a
+                                        class="username"
+                                        href="{{
+                                            item.get(
+                                                'profile_url'
+                                            )
+                                        }}"
+                                        target="_blank"
+                                        rel="noopener noreferrer"
+                                    >
+                                        @{{
+                                            item.get(
+                                                "username"
+                                            )
+                                        }}
+                                    </a>
+
+                                </td>
+
+
+                                <td>
+
+                                    {% if item.get("is_new_candidate") %}
+
+                                        <span class="badge badge-green">
+                                            جدید
+                                        </span>
+
+                                    {% else %}
+
+                                        <span class="badge badge-gray">
+                                            قبلی
+                                        </span>
+
+                                    {% endif %}
+
+                                </td>
+
+
+                                <td>
+                                    {{
+                                        category_badge(
+                                            item.get(
+                                                "requested_category"
+                                            )
+                                        )
+                                    }}
+                                </td>
+
+
+                                <td>
+
+                                    <span class="badge badge-blue">
+                                        {{
+                                            item.get(
+                                                "source"
+                                            )
+                                            or "-"
+                                        }}
+                                    </span>
+
+                                </td>
+
+
+                                <td class="query-cell">
+                                    {{
+                                        item.get(
+                                            "query"
+                                        )
+                                        or "-"
+                                    }}
+                                </td>
+
+
+                                <td>
+
+                                    <span class="badge badge-gray ltr-badge">
+                                        {{
+                                            item.get(
+                                                "discovered_at"
+                                            )
+                                            or "-"
+                                        }}
+                                    </span>
+
+                                </td>
+
+                            </tr>
+
+                        {% endfor %}
+
+                        </tbody>
+
+                    </table>
+
+                </div>
+
+
+                <div class="filtered-empty">
+                    هیچ کاندیدی با این فیلترها پیدا نشد.
+                </div>
+
+            {% else %}
+
+                <div class="empty-state">
+
+                    <div class="empty-state-title">
+                        آخرین Discovery خالی است
+                    </div>
+
+                    پس از اجرای جستجو، کاندیدها اینجا نمایش داده می‌شوند.
+
+                </div>
+
+            {% endif %}
+
+        </div>
+
+    </section>
+
+
+    <!-- ===================================
+         SAVED PROFILES
+    ==================================== -->
+
+    <section
+        class="panel"
+        id="panel-profiles"
+    >
+
+        <div
+            class="
+                table-card
+                filterable-panel
+            "
+        >
+
+            <div class="table-toolbar">
+
+                <div>
+
+                    <h2 class="table-title">
+                        پروفایل‌های ذخیره‌شده
+                    </h2>
+
+                    <div class="table-subtitle">
+                        پروفایل‌هایی که شرایط نهایی سیستم را داشته‌اند
+                    </div>
+
+                </div>
+
+
+                <div class="table-count">
+
+                    <span data-visible-count>
+                        {{ profiles|length }}
+                    </span>
+
+                    &nbsp;مورد
+
+                </div>
+
+            </div>
+
+
+            <div class="filters">
+
+                <div class="filter-group">
+
+                    <label class="filter-label">
+                        جستجو
+                    </label>
+
+                    <input
+                        class="filter-input"
+                        type="text"
+                        placeholder="نام کاربری، نام فروشگاه یا بیو"
+                        data-filter-search
+                    >
+
+                </div>
+
+
+                <div class="filter-group">
+
+                    <label class="filter-label">
+                        دسته‌بندی
+                    </label>
+
+                    <select
+                        class="filter-select"
+                        data-filter-category
+                    >
+
+                        <option value="">
+                            همه
+                        </option>
+
+                        <option value="beauty">
+                            زیبایی
+                        </option>
+
+                        <option value="fashion">
+                            فشن
+                        </option>
+
+                        <option value="clothing">
+                            پوشاک
+                        </option>
+
+                        <option value="home">
+                            خانه
+                        </option>
+
+                        <option value="accessories">
+                            اکسسوری
+                        </option>
+
+                        <option value="toys">
+                            اسباب‌بازی
+                        </option>
+
+                    </select>
+
+                </div>
+
+
+                <div class="filter-group">
+
+                    <label class="filter-label">
+                        حداقل فالوور
+                    </label>
+
+                    <input
+                        class="filter-input"
+                        type="number"
+                        min="0"
+                        data-filter-min-followers
+                    >
+
+                </div>
+
+
+                <div class="filter-group">
+
+                    <label class="filter-label">
+                        حداکثر فالوور
+                    </label>
+
+                    <input
+                        class="filter-input"
+                        type="number"
+                        min="0"
+                        data-filter-max-followers
+                    >
+
+                </div>
+
+
+                <div class="filter-group">
+
+                    <label class="filter-label">
+                        حداقل امتیاز %
+                    </label>
+
+                    <input
+                        class="filter-input"
+                        type="number"
+                        min="0"
+                        max="100"
+                        data-filter-min-score
+                    >
+
+                </div>
+
+
+                <button
+                    type="button"
+                    class="reset-button"
+                    data-reset-filters
+                >
+                    پاک کردن فیلترها
+                </button>
+
+            </div>
+
+
+            {% if profiles %}
+
+                <div class="table-wrapper">
+
+                    <table>
+
+                        <thead>
+
+                            <tr>
+
+                                <th class="row-number-head">
+                                    ردیف
+                                </th>
+
+                                <th>
+                                    نام کاربری
+                                </th>
+
+                                <th>
+                                    نام
+                                </th>
+
+                                <th>
+                                    فالوور
+                                </th>
+
+                                <th>
+                                    فالووینگ
+                                </th>
+
+                                <th>
+                                    پست
+                                </th>
+
+                                <th>
+                                    دسته‌بندی
+                                </th>
+
+                                <th>
+                                    امتیاز
+                                </th>
+
+                                <th>
+                                    نوع حساب
+                                </th>
+
+                                <th>
+                                    بیو
+                                </th>
+
+                            </tr>
+
+                        </thead>
+
+
+                        <tbody>
+
+                        {% for item in profiles %}
+
+                            <tr
+                                data-filter-row
+
+                                data-category="{{
+                                    item.get(
+                                        'category'
+                                    )
+                                    or ''
+                                }}"
+
+                                data-followers="{{
+                                    item.get(
+                                        'followers_count'
+                                    )
+                                    or 0
+                                }}"
+
+                                data-score="{{
+                                    item.get(
+                                        'shop_score'
+                                    )
+                                    or 0
+                                }}"
+
+                                data-search-text="
+                                    {{
+                                        item.get(
+                                            'username'
+                                        )
+                                        or ''
+                                    }}
+                                    {{
+                                        item.get(
+                                            'display_name'
+                                        )
+                                        or ''
+                                    }}
+                                    {{
+                                        item.get(
+                                            'bio'
+                                        )
+                                        or ''
+                                    }}
+                                    {{
+                                        item.get(
+                                            'category'
+                                        )
+                                        or ''
+                                    }}
+                                "
+                            >
+
+                                <td class="row-number-cell">
+
+                                    <span class="row-number">
+                                        {{ loop.index }}
+                                    </span>
+
+                                </td>
+
+
+                                <td>
+
+                                    <a
+                                        class="username"
+                                        href="{{
+                                            item.get(
+                                                'profile_url'
+                                            )
+                                        }}"
+                                        target="_blank"
+                                        rel="noopener noreferrer"
+                                    >
+                                        @{{
+                                            item.get(
+                                                "username"
+                                            )
+                                        }}
+                                    </a>
+
+                                </td>
+
+
+                                <td>
+                                    {{
+                                        item.get(
+                                            "display_name"
+                                        )
+                                        or "-"
+                                    }}
+                                </td>
+
+
+                                <td>
+
+                                    <span class="badge badge-gray number-badge">
+                                        {{
+                                            item.get(
+                                                "followers_count"
+                                            )
+                                            |number
+                                        }}
+                                    </span>
+
+                                </td>
+
+
+                                <td>
+
+                                    <span class="badge badge-gray number-badge">
+                                        {{
+                                            item.get(
+                                                "following_count"
+                                            )
+                                            |number
+                                        }}
+                                    </span>
+
+                                </td>
+
+
+                                <td>
+
+                                    <span class="badge badge-gray number-badge">
+                                        {{
+                                            item.get(
+                                                "posts_count"
+                                            )
+                                            |number
+                                        }}
+                                    </span>
+
+                                </td>
+
+
+                                <td>
+                                    {{
+                                        category_badge(
+                                            item.get(
+                                                "category"
+                                            )
+                                        )
+                                    }}
+                                </td>
+
+
+                                <td>
+
+                                    <span class="badge badge-primary number-badge">
+                                        {{
+                                            item.get(
+                                                "shop_score"
+                                            )
+                                            |score
+                                        }}
+                                    </span>
+
+                                </td>
+
+
+                                <td>
+                                    {{
+                                        shop_badge(
+                                            item.get(
+                                                "is_shop"
+                                            )
+                                        )
+                                    }}
+                                </td>
+
+
+                                <td class="bio-cell">
+                                    {{
+                                        item.get(
+                                            "bio"
+                                        )
+                                        or "-"
+                                    }}
+                                </td>
+
+                            </tr>
+
+                        {% endfor %}
+
+                        </tbody>
+
+                    </table>
+
+                </div>
+
+
+                <div class="filtered-empty">
+                    هیچ پروفایلی با این فیلترها پیدا نشد.
+                </div>
+
+            {% else %}
+
+                <div class="empty-state">
+
+                    <div class="empty-state-title">
+                        هنوز پروفایلی ذخیره نشده
+                    </div>
+
+                    پروفایل‌های نهایی و تاییدشده در این بخش قرار می‌گیرند.
+
+                </div>
+
+            {% endif %}
+
+        </div>
+
+    </section>
+
+
+    <!-- ===================================
+         CANDIDATES
+    ==================================== -->
+
+    <section
+        class="panel"
+        id="panel-candidates"
+    >
+
+        <div
+            class="
+                table-card
+                filterable-panel
+            "
+        >
+
+            <div class="table-toolbar">
+
+                <div>
+
+                    <h2 class="table-title">
+                        همه کاندیدهای ذخیره‌شده
+                    </h2>
+
+                    <div class="table-subtitle">
+                        تاریخچه تمام پروفایل‌هایی که توسط Discovery پیدا شده‌اند
+                    </div>
+
+                </div>
+
+
+                <div class="table-count">
+
+                    <span data-visible-count>
+                        {{ candidates|length }}
+                    </span>
+
+                    &nbsp;مورد
+
+                </div>
+
+            </div>
+
+
+            <div class="filters">
+
+                <div class="filter-group">
+
+                    <label class="filter-label">
+                        جستجو
+                    </label>
+
+                    <input
+                        class="filter-input"
+                        type="text"
+                        placeholder="نام کاربری، دلیل رد یا خطا"
+                        data-filter-search
+                    >
+
+                </div>
+
+
+                <div class="filter-group">
+
+                    <label class="filter-label">
+                        وضعیت
+                    </label>
+
+                    <select
+                        class="filter-select"
+                        data-filter-result
+                    >
+
+                        <option value="">
+                            همه
+                        </option>
+
+                        <option value="new">
+                            جدید
+                        </option>
+
+                        <option value="matched">
+                            تاییدشده
+                        </option>
+
+                        <option value="rejected">
+                            ردشده
+                        </option>
+
+                        <option value="incomplete">
+                            ناقص
+                        </option>
+
+                        <option value="fetch_failed">
+                            خطای دریافت
+                        </option>
+
+                        <option value="rate_limited">
+                            محدودیت
+                        </option>
+
+                        <option value="already_saved">
+                            قبلاً ذخیره‌شده
+                        </option>
+
+                    </select>
+
+                </div>
+
+
+                <div class="filter-group">
+
+                    <label class="filter-label">
+                        دسته‌بندی
+                    </label>
+
+                    <select
+                        class="filter-select"
+                        data-filter-category
+                    >
+
+                        <option value="">
+                            همه
+                        </option>
+
+                        <option value="beauty">
+                            زیبایی
+                        </option>
+
+                        <option value="fashion">
+                            فشن
+                        </option>
+
+                        <option value="clothing">
+                            پوشاک
+                        </option>
+
+                        <option value="home">
+                            خانه
+                        </option>
+
+                        <option value="accessories">
+                            اکسسوری
+                        </option>
+
+                        <option value="toys">
+                            اسباب‌بازی
+                        </option>
+
+                        <option value="unknown">
+                            نامشخص
+                        </option>
+
+                    </select>
+
+                </div>
+
+
+                <div class="filter-group">
+
+                    <label class="filter-label">
+                        حداقل فالوور
+                    </label>
+
+                    <input
+                        class="filter-input"
+                        type="number"
+                        min="0"
+                        data-filter-min-followers
+                    >
+
+                </div>
+
+
+                <div class="filter-group">
+
+                    <label class="filter-label">
+                        حداقل امتیاز %
+                    </label>
+
+                    <input
+                        class="filter-input"
+                        type="number"
+                        min="0"
+                        max="100"
+                        data-filter-min-score
+                    >
+
+                </div>
+
+
+                <button
+                    type="button"
+                    class="reset-button"
+                    data-reset-filters
+                >
+                    پاک کردن فیلترها
+                </button>
+
+            </div>
+
+
+            {% if candidates %}
+
+                <div class="table-wrapper">
+
+                    <table>
+
+                        <thead>
+
+                            <tr>
+
+                                <th class="row-number-head">
+                                    ردیف
+                                </th>
+
+                                <th>
+                                    نام کاربری
+                                </th>
+
+                                <th>
+                                    وضعیت
+                                </th>
+
+                                <th>
+                                    فالوور
+                                </th>
+
+                                <th>
+                                    دسته تشخیص
+                                </th>
+
+                                <th>
+                                    دسته نهایی
+                                </th>
+
+                                <th>
+                                    اطمینان
+                                </th>
+
+                                <th>
+                                    امتیاز
+                                </th>
+
+                                <th>
+                                    تعداد بررسی
+                                </th>
+
+                                <th>
+                                    دفعات ناقص
+                                </th>
+
+                                <th>
+                                    دلیل / خطا
+                                </th>
+
+                            </tr>
+
+                        </thead>
+
+
+                        <tbody>
+
+                        {% for item in candidates %}
+
+                            <tr
+                                data-filter-row
+
+                                data-result="{{
+                                    item.get(
+                                        'status'
+                                    )
+                                    or ''
+                                }}"
+
+                                data-category="{{
+                                    item.get(
+                                        'resolved_category'
+                                    )
+                                    or
+                                    item.get(
+                                        'detected_category'
+                                    )
+                                    or ''
+                                }}"
+
+                                data-followers="{{
+                                    item.get(
+                                        'followers_count'
+                                    )
+                                    or 0
+                                }}"
+
+                                data-score="{{
+                                    item.get(
+                                        'shop_score'
+                                    )
+                                    or 0
+                                }}"
+
+                                data-search-text="
+                                    {{
+                                        item.get(
+                                            'username'
+                                        )
+                                        or ''
+                                    }}
+                                    {{
+                                        item.get(
+                                            'status'
+                                        )
+                                        or ''
+                                    }}
+                                    {{
+                                        item.get(
+                                            'rejection_reason'
+                                        )
+                                        or ''
+                                    }}
+                                    {{
+                                        item.get(
+                                            'incomplete_reason'
+                                        )
+                                        or ''
+                                    }}
+                                    {{
+                                        item.get(
+                                            'last_error'
+                                        )
+                                        or ''
+                                    }}
+                                "
+                            >
+
+                                <td class="row-number-cell">
+
+                                    <span class="row-number">
+                                        {{ loop.index }}
+                                    </span>
+
+                                </td>
+
+
+                                <td>
+
+                                    <a
+                                        class="username"
+                                        href="{{
+                                            item.get(
+                                                'profile_url'
+                                            )
+                                        }}"
+                                        target="_blank"
+                                        rel="noopener noreferrer"
+                                    >
+                                        @{{
+                                            item.get(
+                                                "username"
+                                            )
+                                        }}
+                                    </a>
+
+                                </td>
+
+
+                                <td>
+                                    {{
+                                        result_badge(
+                                            item.get(
+                                                "status"
+                                            )
+                                        )
+                                    }}
+                                </td>
+
+
+                                <td>
+
+                                    <span class="badge badge-gray number-badge">
+                                        {{
+                                            item.get(
+                                                "followers_count"
+                                            )
+                                            |number
+                                        }}
+                                    </span>
+
+                                </td>
+
+
+                                <td>
+                                    {{
+                                        category_badge(
+                                            item.get(
+                                                "detected_category"
+                                            )
+                                        )
+                                    }}
+                                </td>
+
+
+                                <td>
+                                    {{
+                                        category_badge(
+                                            item.get(
+                                                "resolved_category"
+                                            )
+                                        )
+                                    }}
+                                </td>
+
+
+                                <td>
+                                    {{
+                                        confidence_badge(
+                                            item.get(
+                                                "category_confidence"
+                                            )
+                                        )
+                                    }}
+                                </td>
+
+
+                                <td>
+
+                                    <span class="badge badge-primary number-badge">
+                                        {{
+                                            item.get(
+                                                "shop_score"
+                                            )
+                                            |score
+                                        }}
+                                    </span>
+
+                                </td>
+
+
+                                <td>
+
+                                    <span class="badge badge-blue number-badge">
+                                        {{
+                                            item.get(
+                                                "check_attempts",
+                                                0
+                                            )
+                                        }}
+                                    </span>
+
+                                </td>
+
+
+                                <td>
+
+                                    <span class="badge badge-yellow number-badge">
+                                        {{
+                                            item.get(
+                                                "incomplete_attempts",
+                                                0
+                                            )
+                                        }}
+                                    </span>
+
+                                </td>
+
+
+                                <td class="reason-cell">
+
+                                    {{
+                                        item.get(
+                                            "rejection_reason"
+                                        )
+                                        or
+                                        item.get(
+                                            "incomplete_reason"
+                                        )
+                                        or
+                                        item.get(
+                                            "last_error"
+                                        )
+                                        or
+                                        "-"
+                                    }}
+
+                                </td>
+
+                            </tr>
+
+                        {% endfor %}
+
+                        </tbody>
+
+                    </table>
+
+                </div>
+
+
+                <div class="filtered-empty">
+                    هیچ کاندیدی با این فیلترها پیدا نشد.
+                </div>
+
+            {% else %}
+
+                <div class="empty-state">
+
+                    <div class="empty-state-title">
+                        کاندیدی وجود ندارد
+                    </div>
+
+                    پس از اجرای Discovery، همه کاندیدها در این بخش ذخیره می‌شوند.
+
+                </div>
+
+            {% endif %}
+
+        </div>
+
+    </section>
+
+</div>
+
+
+<script>
+    // ========================================
+    // TAB NAVIGATION
+    // ========================================
+
+    const tabButtons =
+        document.querySelectorAll(
+            ".tab-button"
+        );
+
+    const panels =
+        document.querySelectorAll(
+            ".panel"
+        );
+
+
+    tabButtons.forEach(
+        (button) => {
+
+            button.addEventListener(
+                "click",
+                () => {
+
+                    const target =
+                        button.dataset.tab;
+
+
+                    tabButtons.forEach(
+                        (item) => {
+
+                            item.classList.remove(
+                                "active"
+                            );
+
+                        }
+                    );
+
+
+                    panels.forEach(
+                        (panel) => {
+
+                            panel.classList.remove(
+                                "active"
+                            );
+
+                        }
+                    );
+
+
+                    button.classList.add(
+                        "active"
+                    );
+
+
+                    const targetPanel =
+                        document.getElementById(
+                            `panel-${target}`
+                        );
+
+
+                    if (targetPanel) {
+
+                        targetPanel.classList.add(
+                            "active"
+                        );
+
+                    }
+
+                }
+            );
+
+        }
+    );
+
+
+    // ========================================
+    // FILTER HELPERS
+    // ========================================
+
+    function normalizeText(
+        value
+    ) {
+        return String(
+            value ?? ""
+        )
+            .trim()
+            .toLowerCase();
+    }
+
+
+    function applyFilters(
+        container
+    ) {
+        const rows =
+            container.querySelectorAll(
+                "[data-filter-row]"
+            );
+
+
+        const searchInput =
+            container.querySelector(
+                "[data-filter-search]"
+            );
+
+
+        const resultInput =
+            container.querySelector(
+                "[data-filter-result]"
+            );
+
+
+        const categoryInput =
+            container.querySelector(
+                "[data-filter-category]"
+            );
+
+
+        const newInput =
+            container.querySelector(
+                "[data-filter-new]"
+            );
+
+
+        const minFollowersInput =
+            container.querySelector(
+                "[data-filter-min-followers]"
+            );
+
+
+        const maxFollowersInput =
+            container.querySelector(
+                "[data-filter-max-followers]"
+            );
+
+
+        const minScoreInput =
+            container.querySelector(
+                "[data-filter-min-score]"
+            );
+
+
+        const search =
+            normalizeText(
+                searchInput?.value
+            );
+
+
+        const result =
+            normalizeText(
+                resultInput?.value
+            );
+
+
+        const category =
+            normalizeText(
+                categoryInput?.value
+            );
+
+
+        const newStatus =
+            normalizeText(
+                newInput?.value
+            );
+
+
+        const minFollowers =
+            Number(
+                minFollowersInput?.value
+                || 0
+            );
+
+
+        const maxFollowers =
+            Number(
+                maxFollowersInput?.value
+                || 0
+            );
+
+
+        const minScorePercent =
+            Number(
+                minScoreInput?.value
+                || 0
+            );
+
+
+        const minScore =
+            minScorePercent / 100;
+
+
+        let visibleCount = 0;
+
+
+        rows.forEach(
+            (row) => {
+
+                const rowSearch =
+                    normalizeText(
+                        row.dataset.searchText
+                    );
+
+
+                const rowResult =
+                    normalizeText(
+                        row.dataset.result
+                    );
+
+
+                const rowCategory =
+                    normalizeText(
+                        row.dataset.category
+                    );
+
+
+                const rowNewStatus =
+                    normalizeText(
+                        row.dataset.newStatus
+                    );
+
+
+                const rowFollowers =
+                    Number(
+                        row.dataset.followers
+                        || 0
+                    );
+
+
+                const rowScore =
+                    Number(
+                        row.dataset.score
+                        || 0
+                    );
+
+
+                const matchesSearch =
+                    !search
+                    ||
+                    rowSearch.includes(
+                        search
+                    );
+
+
+                const matchesResult =
+                    !result
+                    ||
+                    rowResult === result;
+
+
+                const matchesCategory =
+                    !category
+                    ||
+                    rowCategory === category;
+
+
+                const matchesNew =
+                    !newStatus
+                    ||
+                    rowNewStatus === newStatus;
+
+
+                const matchesMinFollowers =
+                    !minFollowers
+                    ||
+                    rowFollowers
+                    >=
+                    minFollowers;
+
+
+                const matchesMaxFollowers =
+                    !maxFollowers
+                    ||
+                    rowFollowers
+                    <=
+                    maxFollowers;
+
+
+                const matchesScore =
+                    !minScorePercent
+                    ||
+                    rowScore
+                    >=
+                    minScore;
+
+
+                const visible =
+                    matchesSearch
+                    &&
+                    matchesResult
+                    &&
+                    matchesCategory
+                    &&
+                    matchesNew
+                    &&
+                    matchesMinFollowers
+                    &&
+                    matchesMaxFollowers
+                    &&
+                    matchesScore;
+
+
+                row.classList.toggle(
+                    "filtered-out",
+                    !visible
+                );
+
+
+                if (visible) {
+                    visibleCount += 1;
+                }
+
+            }
+        );
+
+
+        const counter =
+            container.querySelector(
+                "[data-visible-count]"
+            );
+
+
+        if (counter) {
+            counter.textContent =
+                visibleCount;
+        }
+
+
+        const emptyMessage =
+            container.querySelector(
+                ".filtered-empty"
+            );
+
+
+        if (emptyMessage) {
+
+            emptyMessage.classList.toggle(
+                "visible",
+                (
+                    rows.length > 0
+                    &&
+                    visibleCount === 0
+                )
+            );
+
+        }
+    }
+
+
+    // ========================================
+    // FILTER EVENTS
+    // ========================================
+
+    document
+        .querySelectorAll(
+            ".filterable-panel"
+        )
+        .forEach(
+            (container) => {
+
+                container
+                    .querySelectorAll(
+                        "input, select"
+                    )
+                    .forEach(
+                        (input) => {
+
+                            input.addEventListener(
+                                "input",
+                                () => {
+
+                                    applyFilters(
+                                        container
+                                    );
+
+                                }
+                            );
+
+
+                            input.addEventListener(
+                                "change",
+                                () => {
+
+                                    applyFilters(
+                                        container
+                                    );
+
+                                }
+                            );
+
+                        }
+                    );
+
+
+                const resetButton =
+                    container.querySelector(
+                        "[data-reset-filters]"
+                    );
+
+
+                if (resetButton) {
+
+                    resetButton.addEventListener(
+                        "click",
+                        () => {
+
+                            container
+                                .querySelectorAll(
+                                    "input, select"
+                                )
+                                .forEach(
+                                    (input) => {
+
+                                        input.value = "";
+
+                                    }
+                                );
+
+
+                            applyFilters(
+                                container
+                            );
+
+                        }
+                    );
+
+                }
+
+            }
+        );
+</script>
+
+
+</body>
+</html>
